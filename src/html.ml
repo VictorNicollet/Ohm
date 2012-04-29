@@ -19,8 +19,8 @@ let html_of_writer writer =
   let ()   = writer html in
   html 
 
-let add_js js html = html.js := js :: !(html.js)
-let str     s html = add_string html.html s
+let run js html = html.js := js :: !(html.js)
+let str  s html = add_string html.html s
 
 let esc_to_buffer s buf = 
   let b    = ref 0 in

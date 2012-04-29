@@ -9,13 +9,13 @@ type t = {
 
 type writer = t -> unit
 
-val add_js : JsCode.t -> writer
-val esc    : string   -> writer
-val str    : string   -> writer
+val run : JsCode.t -> writer
+val esc : string   -> writer
+val str : string   -> writer
 
 val concat : writer list -> writer
 
-val to_json   : writer -> Json_type.t
+val to_json : writer -> Json_type.t
 
 module Convenience : sig
     
