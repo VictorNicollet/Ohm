@@ -45,3 +45,13 @@ let concat list html = List.iter ((|>) html) list
 
 let get_html html = Buffer.contents html.html
 let get_js   html = JsCode.seq (List.rev !(html.js)) 
+
+let to_string html = 
+  get_html html 
+  ^ "<script type=\"text/javascript\"><![CDATA[" 
+  ^ JsCode.to_script (get_js html)
+  ^ "]]></script>"
+
+let to_json html = 
+  Json_type.Object [ "html", Json_type.String (get_html html) ;
+		     "code", JsCode.to_json   (get_js   html) ]

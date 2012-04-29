@@ -25,18 +25,33 @@ let list_of_tree list =
   aux [] list
 
 
-let string_of_call call = 
+let script_of_call call = 
   call.name 
   ^ "(" 
   ^ String.concat ", " 
     (List.map (Json_io.string_of_json ~recursive:true ~compact:true) call.args)
   ^ ")"
     
-let to_string t =
+let to_script t =
   list_of_tree t
-  |> List.map string_of_call    
+  |> List.map script_of_call    
   |> String.concat " ; "
-  
-  
+    
+let event_of_call call = 
+  call.name 
+  ^ ".call(" 
+  ^ String.concat ", " 
+    ("this" :: List.map (Json_io.string_of_json ~recursive:true ~compact:true) call.args)
+  ^ ")"
+
+let to_event t = 
+  list_of_tree t
+  |> List.map event_of_call    
+  |> String.concat " ; "
+
+let to_json tree = 
+  Json_type.Build.list begin fun call ->
+    Json_type.Build.array ( Json_type.Build.string call.name :: call.args )
+  end (list_of_tree tree)
 	
 	     

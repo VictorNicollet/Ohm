@@ -15,4 +15,6 @@ val seq : t list -> t
 
 val list_of_tree : t -> call list
 
-val to_string : t -> string
+val to_script : t -> string
+val to_event  : t -> string
+val to_json   : t -> Json_type.t

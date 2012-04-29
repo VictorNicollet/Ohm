@@ -19,3 +19,6 @@ val concat : writer list -> writer
 
 val get_html : t -> string
 val get_js   : t -> JsCode.t
+
+val to_json   : t -> Json_type.t
+val to_string : t -> string
