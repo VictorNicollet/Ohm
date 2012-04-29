@@ -14,16 +14,6 @@
     every module can register one or more actions by creating action functions that implement {!Action.Make.t} 
     and then registering them with {!Action.Make.register}. 
 
-    {[
-MyAction.register (...) begin fun request response -> 
-  MyAction.html (fun js ctx -> ctx
-    >> View.str "<DOCTYPE !html><html>...<script>" 
-    >> js 
-    >> View.str "</script></html>"  
-  ) response
-end
-    ]}
-
     @author Victor Nicollet
     @version 1.0
 *)
@@ -127,23 +117,21 @@ module type CUSTOMIZABLE = sig
   type response 
 
 
-  (** {b Html}: create a view that renders the appropriate HTML and use the [html] constructor. This overwrites
-      the contents of the Data channel (JavaScript and Cookies channels are kept). All the JavaScript code that 
-      was added to the request is passed as the first argument to the view. 
+  (** Deprecated. *)
+  val html : (View.Context.text View.t -> View.Context.text View.t) -> response -> response
+
+  (** {b HTML Page}: responds with a web page. The contents are provided as a string, for instance
+      one generated with {!val:Html.render_page}. 
 
       {[
-module Act = Action.Make(SingleServer) 
+module Act = Action.Make(SingleServer)
 
 Act.register (...) begin fun request response -> 
-  Act.html (fun js ctx -> ctx
-    >> View.str "<DOCTYPE !html><html>...<script>" 
-    >> js 
-    >> View.str "</script></html>"  
-  ) response
+  return $ Act.page "<html><head/><body>Hello, world!</body></html>" response
 end
       ]}
   *)
-  val html : (View.Context.text View.t -> View.Context.text View.t) -> response -> response
+  val page : string -> response -> response
 
   (** {b Redirect}: creates a 303 See Other HTTP redirect to the specified absolute URL. Data and JavaScript
       channels are erased, Cookies are kept.
@@ -152,7 +140,7 @@ end
 module Act = Action.Make(SingleServer)
 
 Act.register (...) begin fun request response -> 
-  Act.redirect "http://www.example.com/foo/bar?qux=baz" response
+  return $ Act.redirect "http://www.example.com/foo/bar?qux=baz" response
 end
       ]}
   *)
@@ -173,7 +161,7 @@ Act.register (...) begin fun request response ->
     "ok", Json_type.Build.list Json_type.Build.int [ 1 ; 2 ; 3 ]
   ] in
 
-  Act.json json response
+  return $ Act.json json response
 end
       ]}
   *)
@@ -193,7 +181,7 @@ Act.register (...) begin fun request response ->
   let cookie_life  = 3600 in 
   let url = "http://www.example.com/after-login" in
 
-  Act.with_cookie ~name:cookie_name ~value:cookie_value ~life:cookie_life response
+  return $ Act.with_cookie ~name:cookie_name ~value:cookie_value ~life:cookie_life response
 end 
       ]}
 
@@ -213,11 +201,11 @@ Act.register (...) begin fun request response ->
   let file = "hello.txt"
   let data = "Hello, world!"
 
-  Act.file ~file ~mime ~data response
+  return $ Act.file ~file ~mime ~data response
 end 
       ]}
   *)
-  val file : file:string -> mime:string -> data:View.Context.text View.t -> response -> response
+  val file : file:string -> mime:string -> data:string -> response -> response
 
   (** {b JavaScript}: attaches some JavaScript to be executed after an HTML or JSON response. 
       If the response is HTML, the view will receive the JavaScript code (turned to a string) as
@@ -233,7 +221,7 @@ module Act = Action.Make(SingleServer)
 
 Act.register (...) begin fun request response ->
   let code = JsBase.init in
-  Act.javascript code response
+  return $ Act.javascript code response
 end      
       ]}
   *)
@@ -247,7 +235,7 @@ module Act = Action.Make(SingleServer)
 
 Act.register (...) begin fun request response ->
   let code = JsBase.init in
-  Act.more_javascript code response
+  return $ Act.more_javascript code response
 end      
       ]}
   *)
@@ -352,20 +340,8 @@ end
       finds the appropriate action to respond to a given HTTP request based on the provided {!class:Action.Make.controller}
       and calls the function to obtain the response, which is then sent back to the
       client. 
-
-      As such, assuming [Act = Action.Make(...)], typical actions are defined as: 
-
-      {[
-Act.register (...) begin fun request response ->
-  Act.html (fun js ctx -> ctx
-    >> View.str "<!DOCTYPE html><html>...<script>" 
-    >> js 
-    >> View.str "</script></html>"
-  ) response
-end
-      ]}
   *)    
-  type t = request -> response -> response
+  type t = request -> response -> (unit,response) Run.t
 
   (** An alias to a server type. *)
   type server 
@@ -378,7 +354,7 @@ end
       controller would be defined as: 
 
       {[
-let _ = Act.register (new Act.controller Act.Red "test/url") action
+let _ = Act.register (Act.Red,"test/url") action
       ]}
 
       The path may contain a {b wildcard} to match several different URLs with the same 
@@ -386,7 +362,7 @@ let _ = Act.register (new Act.controller Act.Red "test/url") action
       one would define the action as: 
 
       {[
-let _ = Act.register (new Act.controller Act.Red "view/*") action 
+let _ = Act.register (Act.Red,"view/*") action 
       ]}
 
       The [<id>] would then be available in the [run] method as [request # args 0] (see 
@@ -406,16 +382,7 @@ let _ = Act.register (new Act.controller Act.Red "view/*") action
       as a 404 page. Otherwise, {!exception:Action.Make.Action_not_found} will be raised. 
       
   *)
-  class controller : server -> string ->
-  object
-
-    (** The server on which this request is handled. See {!Action.Make.controller} for more information. *)
-    method server : server
-
-    (** The path or paths handled by this action. See {!Action.Make.controller} for more information. *)
-    method path   : string
-
-  end
+  type controller = server * string
 
   (** Raised when no actions match a specific request. Should be avoided by registering an action with 
       a {!class:Action.Make.controller} that has a path of ["*"] to handle 404 errors.
@@ -433,10 +400,10 @@ let _ = Act.register (new Act.controller Act.Red "view/*") action
       {[
 module Act = Action.Make(Action.SingleServer)
 
-let () = Act.register (new Act.controller Act.TheServer "foo/*") foo_handler
+let () = Act.register (`TheServer,"foo/*") foo_handler
 
-let a = Act.action_of_path Act.TheServer "foo/bar/qux"
-let b = Act.action_of_path Act.TheServer "bar"
+let a = Act.action_of_path `TheServer "foo/bar/qux"
+let b = Act.action_of_path `TheServer "bar"
       ]}
 
       Here, [a] is [Some (foo_handler, \["bar";"qux"\])] and [b] is [None]. 
@@ -448,16 +415,16 @@ let b = Act.action_of_path Act.TheServer "bar"
       {[
 module Act = Action.Make(Action.SingleServer)
 
-let _ = Act.register (new Act.controller Act.TheServer "foo/*") foo_handler
+let _ = Act.register (`TheServer,"foo/*") foo_handler
 
 module Act = Action.Make(Action.SingleServer)
 
-let a = Act.action_of_path Act.TheServer "foo/bar/qux"
+let a = Act.action_of_path `TheServer "foo/bar/qux"
       ]}
 
       {b Make sure your entire application only contains one call to the {!module:Action.Make} functor!}
   *)
-  val action_of_path : server -> string -> ((request -> response -> response) * string list) option
+  val action_of_path : server -> string -> (t * string list) option
 
   (** Dispatch a FastCGI request. 
 
@@ -483,9 +450,9 @@ let a = Act.action_of_path Act.TheServer "foo/bar/qux"
       {[
 module Act = Action.Make(Action.SingleServer)
 
-let () = Act.register (new Act.controller Act.TheServer "foo/*") foo_handler
+let () = Act.register (`TheServer,"foo/*") foo_handler
 
-let a = Act.action_of_path Act.TheServer "foo/bar/qux"
+let a = Act.action_of_path `TheServer "foo/bar/qux"
       ]}
 
       This sucessfully returns [Some (foo_handler, \["bar";"qux"\])].
@@ -495,16 +462,11 @@ let a = Act.action_of_path Act.TheServer "foo/bar/qux"
       {[
 module Act = Action.Make(Action.SingleServer)
 
-class action = object
-  method controller = new Act.controller Act.TheServer "foo/*"
-  method run = foo_handler
-end
-
-let () = Act.register (new action)
+let () = Act.register (`TheServer,"foo/*") foo_handler
 
 module Act = Action.Make(Action.SingleServer)
 
-let a = Act.action_of_path Act.TheServer "foo/bar/qux"
+let a = Act.action_of_path `TheServer "foo/bar/qux"
       ]}
 
       {b Make sure your entire application only contains one call to the {!module:Action.Make} functor!}
@@ -512,7 +474,7 @@ let a = Act.action_of_path Act.TheServer "foo/bar/qux"
       This function returns the action, just in case you need to do something with it, but most of 
       the time it will be ignored. 
   *)
-  val register : #controller -> t -> unit
+  val register : controller -> t -> unit
 
   (** Run the Fastcgi server with the appropriate default configuration. *)
   val run : (Netcgi_fcgi.cgi -> unit) -> unit

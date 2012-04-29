@@ -37,10 +37,11 @@ module type CUSTOMIZABLE = sig
   type response 
 
   val html : (View.Context.text View.t -> View.Context.text View.t) -> response -> response
+  val page : string -> response -> response
   val redirect : string -> response -> response
   val json : (string * Json_type.t) list -> response -> response
   val with_cookie : name:string -> value:string -> life:int -> response -> response
-  val file : file:string -> mime:string -> data:View.Context.text View.t -> response -> response
+  val file : file:string -> mime:string -> data:string -> response -> response
   val javascript : JsCode.t -> response -> response
   val more_javascript : JsCode.t -> response -> response
 
@@ -59,32 +60,28 @@ module type CUSTOMIZABLE = sig
 
   end
 
-  type t = request -> response -> response
+  type t = request -> response -> (unit,response) Run.t
 
   type server 
 
-  class controller : server -> string ->
-  object
-    method server : server
-    method path   : string
-  end
+  type controller = server * string
 
   exception Action_not_found of string
 
-  val action_of_path : server -> string -> 
-    ((request -> response -> response) * string list) option
+  val action_of_path : server -> string -> (t * string list) option
   val dispatch : #Netcgi.cgi -> unit
-  val register : #controller -> t -> unit
+  val register : controller -> t -> unit
   val run : (Netcgi_fcgi.cgi -> unit) -> unit    
 end
 
 module Customize = functor (Config:CONFIG) -> struct
 
   type response_kind = 
+    | Page of string 
     | Html of (View.Context.text View.t -> View.Context.text View.t) * JsCode.t
     | Redirect of string
     | Json of (string * Json_type.t) list * JsCode.t
-    | File of string * string * View.Context.text View.t
+    | File of string * string * string
 	
   type response = 
       {
@@ -118,6 +115,11 @@ module Customize = functor (Config:CONFIG) -> struct
   let with_cookie ~name ~value ~life response = {
     response with 
       cookies = (name, value, life) :: response.cookies
+  }
+
+  let page html response = {
+    response with 
+      kind = Page html 
   }
     
   let file ~file ~mime ~data response = {
@@ -237,27 +239,19 @@ module Customize = functor (Config:CONFIG) -> struct
   let empty = { kind = Json ( [] , JsCode.seq [] ) ; cookies = [] }
 
   type server = Config.server
+  type controller = server * string
+  type t = request -> response -> (unit,response) Run.t
 
-  class controller server path = 
-  object
-    val server = (server : server)
-    val path   = (path : string)
-      
-    method server = server
-    method path   = path
-  end
-    
-  type t = request -> response -> response
     
   let _path_hash = Hashtbl.create 100
     
   let _servername = Config.name_of_server 
     
-  let register ctrl action = 
+  let register (server,path) action = 
     if Util.role = `Web then begin 
-      let path   = lowercase (ctrl # path) in
-      log  "Action.register: http://%s/%s" (_servername (ctrl # server)) path ;
-      Hashtbl.add _path_hash (ctrl # server,path) action
+      let path   = lowercase path in
+      log  "Action.register: http://%s/%s" (_servername server) path ;
+      Hashtbl.add _path_hash (server,path) action
     end 
 
 (* ----------------------------------------------------------------- *)
@@ -289,6 +283,11 @@ module Customize = functor (Config:CONFIG) -> struct
       cgi # environment # send_output_header () ;
       ignore (write (JsBase.to_js js) (new View.channel_writer out_channel))
 	
+    | Page html ->
+      if cookies <> [] then cgi # set_header ~set_cookies:cookies () ;            
+      cgi # environment # send_output_header () ;
+      ignore (out_channel # output html 0 (String.length html)) 
+
     | Redirect url ->
       cgi # set_redirection_header ~set_cookies:cookies url ;
       cgi # environment # send_output_header () 
@@ -296,7 +295,7 @@ module Customize = functor (Config:CONFIG) -> struct
     | File (file, mime, data) ->
       cgi # set_header ~set_cookies:cookies ~content_type:mime ~filename:file ();
       cgi # environment # send_output_header () ;
-      ignore (data (new View.channel_writer out_channel))
+      ignore (out_channel # output data 0 (String.length data)) 
       	
     | Json (json,js) ->
       cgi # set_header ~set_cookies:cookies ~content_type:"application/json" ();
@@ -309,7 +308,7 @@ module Customize = functor (Config:CONFIG) -> struct
 	>> Json_type.Build.objekt
 	>> (Json_io.string_of_json ~recursive:true ~compact:true)
       in
-      ignore (View.str json (new View.channel_writer out_channel))
+      ignore (out_channel # output json 0 (String.length json)) 
     end 
 	
   let action_of_path server path = 
@@ -341,7 +340,7 @@ module Customize = functor (Config:CONFIG) -> struct
     
     let request = (new fcgi_request args cgi :> request) in
     
-    let response = action request empty in
+    let response = Run.eval () (action request empty) in
 
     _process server cgi response 
 
