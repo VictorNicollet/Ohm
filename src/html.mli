@@ -22,3 +22,19 @@ val get_js   : t -> JsCode.t
 
 val to_json   : t -> Json_type.t
 val to_string : t -> string
+
+
+module Convenience : sig
+    
+  val script : string -> writer
+
+end
+
+val print_page : 
+     ?css:string list
+  -> ?js:string list
+  -> ?head:string
+  -> ?body_classes:string list
+  -> title:string
+  -> t
+  -> string
