@@ -14,6 +14,11 @@ let create () = { html = Buffer.create 16 ; js = ref [] }
 
 type writer = t -> unit
 
+let html_of_writer writer = 
+  let html = create () in
+  let ()   = writer html in
+  html 
+
 let add_js js html = html.js := js :: !(html.js)
 let str     s html = add_string html.html s
 
@@ -46,14 +51,9 @@ let concat list html = List.iter ((|>) html) list
 
 let get_html html = Buffer.contents html.html
 let get_js   html = JsCode.seq (List.rev !(html.js)) 
-
-let to_string html = 
-  get_html html 
-  ^ "<script type=\"text/javascript\"><![CDATA[" 
-  ^ JsCode.to_script (get_js html)
-  ^ "]]></script>"
-
-let to_json html = 
+  
+let to_json writer =
+  let html = html_of_writer writer in
   Json_type.Object [ "html", Json_type.String (get_html html) ;
 		     "code", JsCode.to_json   (get_js   html) ]
 
@@ -66,12 +66,12 @@ module Convenience = struct
 
 end
 
-let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title html = 
+let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer = 
   
-  concat (List.map Convenience.script js) html ;
+  let html   = create () in
+  let buffer = html.html in 
 
-  let buffer = Buffer.create 2000 in
-
+  (* HEAD elements *)
   add_string buffer "<!DOCTYPE html><html><head>" ;
 
   add_string buffer "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>" ;
@@ -87,6 +87,8 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title html =
 
   add_string buffer head ;
 
+  (* BODY elements *)
+
   add_string buffer "</head><body" ;
   if body_classes <> [] then begin 
     add_string buffer " class=\"" ;
@@ -95,8 +97,18 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title html =
   end else
     add_string buffer ">" ;
 
-  add_string buffer (to_string html) ;
+  writer html ;
+
+  (* End-of-body SCRIPT elements *)
+
+  concat (List.map Convenience.script js) html ;
+  
+  add_string buffer "<script type=\"text/javascript\"><![CDATA[" ;
+  add_string buffer (JsCode.to_script (get_js html)) ;
+  add_string buffer "]]></script>" ;
 
   add_string buffer "</body></html>" ;
+
+  (* Return the resulting string *)
 
   Buffer.contents buffer

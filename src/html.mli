@@ -7,8 +7,6 @@ type t = {
   js   : js 
 }
 
-val create : unit -> t
-
 type writer = t -> unit
 
 val add_js : JsCode.t -> writer
@@ -17,12 +15,7 @@ val str    : string   -> writer
 
 val concat : writer list -> writer
 
-val get_html : t -> string
-val get_js   : t -> JsCode.t
-
-val to_json   : t -> Json_type.t
-val to_string : t -> string
-
+val to_json   : writer -> Json_type.t
 
 module Convenience : sig
     
@@ -36,5 +29,5 @@ val print_page :
   -> ?head:string
   -> ?body_classes:string list
   -> title:string
-  -> t
+  -> writer
   -> string
