@@ -1,0 +1,1 @@
+<*>: package(curl), package(json-wheel), package(json-static), package(netcgi2), package(netclient), package(batteries), package(sha), package(netstring), package(xmlm), syntax(camlp4o), custom-pp
