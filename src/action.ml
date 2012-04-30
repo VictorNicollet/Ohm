@@ -15,7 +15,7 @@ end
 
 module SingleServer = struct
   type server = [ `TheServer ]
-  let name_of_server _ = "http://.../"
+  let name_of_server _ = "*"
   let server_of_name _ = `TheServer
   let server_suffix  _ = None
 end
