@@ -220,3 +220,22 @@ module ReduceView :
 
 val compact : unit -> unit
 val compile_views : unit -> unit
+
+module Convenience : sig
+
+  module type LOCAL_CONFIG = sig
+    val db : string
+  end
+
+  module Config   : functor(Config:LOCAL_CONFIG) -> CONFIG
+  module Database : functor(Config:LOCAL_CONFIG) -> DATABASE
+  module Table    : 
+    functor (Config:LOCAL_CONFIG) ->
+      functor (Id:ID) -> 
+	functor (Type:Fmt.FMT) ->
+  sig
+    module MyTable : TABLE with type id = Id.t and type elt = Type.t
+    module Design  : DESIGN
+  end
+
+end

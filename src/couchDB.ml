@@ -51,3 +51,7 @@ module DocView    = ImplViews.DocView
 module MapView    = ImplViews.MapView
 
 let compile_views () = ImplViews.compile_views ()
+
+(* Convenience module ---------------------------------------------------------------------- *)
+
+module Convenience = CouchDB_convenience
