@@ -7,7 +7,7 @@ module Asset = Asset
 (* Define all errors that might be encountered --------------------------------------------- *)
 
 let error reason explanation = 
-  Printf.printf "%s\n\n%s\n\nPID= %d | UID= %d | eUID= %d | GID= %d | eGID = %d \nCWD= %s" 
+  Printf.printf "%s\n\n%s\n\nPID= %d | UID= %d | eUID= %d | GID= %d | eGID = %d \nCWD= %s\n" 
     reason explanation 
     (Unix.getpid ())
     (Unix.getuid ())
@@ -71,6 +71,17 @@ let readfile_lexbuf path f =
       Pervasives.close_in channel ;
       result
   with exn -> error_readfile path exn 
+
+let error_writefile = 
+  path_error
+    "Could not write file."
+     "ohm-tool needs to write the contents of file %S, but open_out_bin raised an exception: '%s'"
+
+let putfile path contents = 
+  try let channel = Pervasives.open_out_bin path in 
+      Pervasives.output_string channel contents ;
+      Pervasives.close_out channel 
+  with exn -> error_writefile path exn 
 
 let error_parse =
   path_error
@@ -197,8 +208,9 @@ let parsed_assets = lazy begin
   in
   
   List.iter (fun (file,contents) -> 
-    print_endline ("(* == " ^ file ^ " == *)") ;
-    print_endline contents
+    let path = Filename.concat Path.build file in
+    print_endline ("Generating " ^ path ^ " ...") ;
+    putfile path contents
   ) generated ;
   
 end
