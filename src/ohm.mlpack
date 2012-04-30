@@ -4,6 +4,7 @@ Compressor
 Configure
 CouchDB
 CouchDB_cache
+CouchDB_convenience
 CouchDB_database
 CouchDB_parser
 CouchDB_types
