@@ -25,6 +25,9 @@ let error_no_project_root () =
 let path_error title format path exn = 
   error title (Printf.sprintf format path (Printexc.to_string exn))  
 
+let path2_error title format path1 path2 exn = 
+  error title (Printf.sprintf format path1 path2 (Printexc.to_string exn))  
+
 let error_mkdir_failure = 
   path_error 
     "Could not create directory."
@@ -88,6 +91,29 @@ let error_parse =
     "Could not parse file."
     "ohm-tool tried to parse file %S but encountered an error: '%s'"
 
+let system command e = 
+  try let () = print_endline command in
+      let result = Sys.command command in 
+      if result <> 0 then 
+	error e
+	  (Printf.sprintf "The command %S returned error code %d" command result) 
+  with exn ->
+    error e
+      (Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn)) 	  
+
+let lessc from into = 
+  system ("lessc -x " ^ Filename.quote from ^ " > " ^ Filename.quote into) 
+    "Could not compile LESS CSS sources to final CSS."
+
+let symlink source dest = 
+  try let is_present = try Unix.readlink dest = source with _ -> false in
+      if not is_present then Unix.symlink source dest 
+  with exn ->
+    path2_error 
+      "Could not create symlink."
+      "ohm-tool tried to create link %S to path %S but Unix.symlink encountered an error: '%s'" 
+      source dest exn
+
 (* Find out the root of the current project, and define relevant subdirectories ------------ *)
   
 module Path = struct
@@ -109,6 +135,7 @@ module Path = struct
   let www     = Filename.concat root  "www"
   let assets  = Filename.concat root  "assets" 
   let build   = Filename.concat root  "_build"
+  let public  = Filename.concat www   "public"
     
 end
 
@@ -130,6 +157,7 @@ let () = Arg.parse [
 
 let () = 
   if not (is_dir Path.build) then mkdir Path.build 0o751
+
  
 (* Listing assets (a common subroutine) ---------------------------------------------------- *)
 
@@ -174,7 +202,9 @@ let parsed_assets = lazy begin
 
   let assets = Lazy.force assets in 
   
-  let parse (kind,asset) = 
+  (* Extracting HTML *)
+
+  let parse_html (kind,asset) = 
     match kind with `Coffee | `Less -> None | `View -> 
       let result = readfile_lexbuf asset Asset.parse in
       match result with 
@@ -182,7 +212,7 @@ let parsed_assets = lazy begin
 	| Bad exn   -> error_parse asset exn 
   in
 
-  let streams = BatList.filter_map parse assets in 
+  let streams = BatList.filter_map parse_html assets in 
   let buffer, streams = Asset.extract_strings streams in 
 
   let revname_of_path path = 
@@ -199,20 +229,45 @@ let parsed_assets = lazy begin
   in
 
   let streams = List.map (fun (asset,stream) -> revname_of_path asset, stream) streams in
-  let assets  = Asset.extract_assets streams in 
+  let templates = Asset.extract_assets streams in 
   
   let generated = 
     List.concat
       (Asset.generate_source buffer
-       :: (List.map (fun (revpath,asset) -> Asset.generate_asset revpath asset) assets))
+       :: (List.map (fun (revpath,asset) -> Asset.generate_asset revpath asset) templates))
   in
+
+  (* Extracting LESS *)
   
+  let parse_css (kind,asset) =
+    match kind with `Coffee | `View -> None | `Less -> Some (asset, readfile asset)
+  in
+
+  let css = BatList.filter_map parse_css assets in
+  let css = List.sort (fun a b -> compare (fst a) (fst b)) css in
+  
+  let all_css = String.concat "\n" (List.map snd css) in
+
+  let generated = ("style.less", all_css) :: generated in
+
+  (* Generating all files *)
+
   List.iter (fun (file,contents) -> 
     let path = Filename.concat Path.build file in
     print_endline ("Generating " ^ path ^ " ...") ;
     putfile path contents
   ) generated ;
-  
+
+  (* Compiling LESS CSS and making a public symlink. *)
+
+  let less_input = Filename.concat Path.build "style.less" in
+  let css_output = Filename.concat Path.build "style.css" in
+  lessc less_input css_output ;
+
+  let css_public = Filename.concat Path.public "style.css" in
+  if not (is_dir Path.public) then mkdir Path.public 0o751 ;
+  symlink css_output css_public
+
 end
 
 (* Actions -------------------------------------------------------------------------------- *)
