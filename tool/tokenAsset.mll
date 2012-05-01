@@ -7,23 +7,26 @@
 }
 
 rule outer = parse
-  | ( [ ^ '\n' '{' ] | "\\{" ) + as str { STR (str, pos lexbuf)  } 
+  | ( [ ^ '\n' '{' '<' ] | "\\{" ) + as str { STR (str, pos lexbuf)  } 
   | '\n' { Lexing.new_line lexbuf ; EOL (pos lexbuf) } 
+  | '<' { STR ("<", pos lexbuf) }
 
-  | "{#"     { OPEN_LIST    (pos lexbuf) }
-  | "{/#}"   { CLOSE_LIST   (pos lexbuf) } 
-  | "{/?}"   { CLOSE_OPTION (pos lexbuf) } 
-  | "{else}" { ELSE         (pos lexbuf) } 
-  | "{if"    { OPEN_IF      (pos lexbuf) } 
-  | "{/if}"  { CLOSE_IF     (pos lexbuf) }
-  | "{?"     { OPEN_OPTION  (pos lexbuf) } 
-  | "{"      { OPEN         (pos lexbuf) } 
-  | "{="     { OPEN_SUB     (pos lexbuf) } 
-  | "{/=}"   { CLOSE_SUB    (pos lexbuf) } 
-  | "{@"     { OPEN_DEF     (pos lexbuf) }
-  | "{/@}"   { CLOSE_DEF    (pos lexbuf) } 
+  | "{#"      { OPEN_LIST    (pos lexbuf) }
+  | "{/#}"    { CLOSE_LIST   (pos lexbuf) } 
+  | "{/?}"    { CLOSE_OPTION (pos lexbuf) } 
+  | "{else}"  { ELSE         (pos lexbuf) } 
+  | "{if"     { OPEN_IF      (pos lexbuf) } 
+  | "{/if}"   { CLOSE_IF     (pos lexbuf) }
+  | "{?"      { OPEN_OPTION  (pos lexbuf) } 
+  | "{"       { OPEN         (pos lexbuf) } 
+  | "{="      { OPEN_SUB     (pos lexbuf) } 
+  | "{/=}"    { CLOSE_SUB    (pos lexbuf) } 
+  | "{@"      { OPEN_DEF     (pos lexbuf) }
+  | "{/@}"    { CLOSE_DEF    (pos lexbuf) } 
 
-  | eof      { EOF } 
+  | "<style>" { let s = style lexbuf in STYLE s }
+
+  | eof       { EOF } 
 
 and inner = parse 
   | '\n' { Lexing.new_line lexbuf ; inner lexbuf } 
@@ -39,6 +42,11 @@ and inner = parse
 
   | _ as c { ERROR (c, pos lexbuf) } 
   | eof    { EOF } 
+
+and style = shortest 
+  | ([^ '\n']* as s) "</style>" { s }
+  | ([^ '\n']* as s) '\n' { Lexing.new_line lexbuf ; s ^ "\n" ^ style lexbuf }
+  | ([^ '\n']*  as s) eof{ s }
 
 {
 

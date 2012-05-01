@@ -10,6 +10,7 @@ type cell =
   | Cell_List   of located option * expr * cell list * cell list
   | Cell_Sub    of expr * cell list
   | Cell_Define of located * cell list
+  | Cell_Style  of string
 and expr = located * expr_flag list 
 and expr_flag = located list
 and located = {
@@ -294,6 +295,7 @@ let clean_string s =
 
 let rec clean_strings = function 
   | [] -> [] 
+  | Cell_Style  s :: tail -> Cell_Style s :: clean_strings tail 
   | Cell_String a :: Cell_String b :: tail -> clean_strings (Cell_String (a ^ b) :: tail) 
   | Cell_String a :: tail -> Cell_String (clean_string a) :: clean_strings tail
   | Cell_Print  x :: tail -> Cell_Print x :: clean_strings tail
@@ -323,44 +325,52 @@ type buffered_cell =
     | `Define of located * buffered_cell list
     ]
   
-let rec extract_strings current list = 
+type extracted = {
+  html : string ;
+  css  : Buffer.t 
+}
+
+let rec extract_strings extracted list = 
 
   let list = clean_strings list in 
 
-  let find string substring = 
+  let find extracted substring = 
+    let string = extracted.html in 
     let n = String.length string and m = String.length substring in 
     let rec at i j = i + j >= n || j >= m || string.[i+j] = substring.[j] && at i (succ j) in 
     let rec search i = if at i 0 then i else search (succ i) in
     let start  = search 0 in
     let concat = max 0 (start + m - n) in
-    (if concat = 0 then string else string ^ String.sub substring (m - concat) concat),
+    (if concat = 0 then extracted else 
+	{ extracted with html = string ^ String.sub substring (m - concat) concat } ),
     start, m 
   in
 
-  let extract current = function
-    | Cell_Print e -> current, `Print e
-    | Cell_If (e,a,b) -> let current, a = extract_strings current a in
-			 let current, b = extract_strings current b in 
-			 current, `If (e,a,b) 
-    | Cell_Option (l,e,a,b) -> let current, a = extract_strings current a in
-			       let current, b = extract_strings current b in
-			       current, `Option (l,e,a,b) 
-    | Cell_List (l,e,a,b) -> let current, a = extract_strings current a in
-			     let current, b = extract_strings current b in 
-			     current, `List (l,e,a,b) 
-    | Cell_Sub (e,l) -> let current, l = extract_strings current l in
-			current, `Sub (e,l) 
-    | Cell_Define (n,l) -> let current, l = extract_strings current l in 
-			   current, `Define (n,l)
-    | Cell_String s -> let current, start, length = find current s in 
-		       current, `String (start, length) 
+  let extract extracted = function
+    | Cell_Print e -> extracted, `Print e
+    | Cell_Style s -> Buffer.add_string extracted.css s ; extracted, `String (0,0)
+    | Cell_If (e,a,b) -> let extracted, a = extract_strings extracted a in
+			 let extracted, b = extract_strings extracted b in 
+			 extracted, `If (e,a,b)
+    | Cell_Option (l,e,a,b) -> let extracted, a = extract_strings extracted a in
+			       let extracted, b = extract_strings extracted b in
+			       extracted, `Option (l,e,a,b)
+    | Cell_List (l,e,a,b) -> let extracted, a = extract_strings extracted a in
+			     let extracted, b = extract_strings extracted b in 
+			     extracted, `List (l,e,a,b)
+    | Cell_Sub (e,l) -> let extracted, l = extract_strings extracted l in
+			extracted, `Sub (e,l) 
+    | Cell_Define (n,l) -> let extracted, l = extract_strings extracted l in 
+			   extracted, `Define (n,l)
+    | Cell_String s -> let extracted, start, length = find extracted s in 
+		       extracted, `String (start, length)
   in
 
   List.fold_right 
-    (fun cell (current, out) -> 
-      let current, cell = extract current cell in 
-      (current, cell :: out))
-    list (current,[])
+    (fun cell (extracted, out) -> 
+      let extracted, cell = extract extracted cell in 
+      (extracted, cell :: out))
+    list (extracted,[])
 
 (* This extracts `Define cells and replaces them with an appropriate `Call cell. The
    extracted definitions all have a complete REVERSED name. *)

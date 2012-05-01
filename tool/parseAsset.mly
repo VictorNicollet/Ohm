@@ -4,7 +4,8 @@
   open SyntaxAsset 
 
 %}
-  
+
+%token < string > STYLE  
 %token < SyntaxAsset.pos > OPEN_LIST ELSE OPEN_IF END_IF OPEN_OPTION DOT
 %token < SyntaxAsset.pos > OPEN OPEN_SUB CLOSE_SUB OPEN_DEF CLOSE_DEF EOL EQUAL CLOSE PIPE
 %token < SyntaxAsset.pos > CLOSE_IF CLOSE_LIST CLOSE_OPTION
@@ -27,6 +28,7 @@ cells :
 ;
 
 cell : 
+  | STYLE { Cell_Style $1 }
   | STR { Cell_String (fst $1) }
   | EOL { Cell_String "\n" }
   | OPEN expr CLOSE { Cell_Print $2 }

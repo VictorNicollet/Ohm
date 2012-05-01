@@ -220,7 +220,9 @@ let parsed_assets = lazy begin
   in
 
   let streams = BatList.filter_map parse_html assets in 
-  let buffer, streams = Asset.extract_strings streams in 
+  let strings, streams = Asset.extract_strings streams in 
+
+  let html = strings.SyntaxAsset.html in
 
   let revname_of_path path = 
     let path = BatString.head path (String.length path - String.length ".htm") in
@@ -237,10 +239,10 @@ let parsed_assets = lazy begin
 
   let streams = List.map (fun (asset,stream) -> revname_of_path asset, stream) streams in
   let templates = Asset.extract_assets streams in 
-  
+
   let generated = 
     List.concat
-      (Asset.generate_source buffer
+      (Asset.generate_source html
        :: (List.map (fun (revpath,asset) -> Asset.generate_asset revpath asset) templates))
   in
 
@@ -258,6 +260,7 @@ let parsed_assets = lazy begin
   let css = List.sort (fun a b -> compare (fst a) (fst b)) css in
   
   let all_css = String.concat "\n" (List.map snd css) in
+  let all_css = all_css ^ "\n" ^ Buffer.contents strings.SyntaxAsset.css in
   let css_md5 = Digest.to_hex (Digest.string all_css) in
 
   let generated = (Path.less, all_css) :: generated in

@@ -10,7 +10,10 @@ let extract_strings streams =
     (fun (asset,stream) (current,out) -> 
       let current, stream = SyntaxAsset.extract_strings current stream in 
       (current, (asset,stream) :: out))
-    streams ("",[])
+    streams (SyntaxAsset.({
+      html = "" ;
+      css  = Buffer.create 16
+    }),[])
   
 let extract_assets streams = 
   List.fold_left
@@ -68,17 +71,18 @@ let generate_asset revpath asset =
   let the_struct = 
     
     let print_cell = function 
-      | `Print uid -> `Stmt (!! "_%d _html ;" uid) 
-      | `String (start,length) -> 
+      | `Print uid    -> Some (`Stmt (!! "_%d _html ;" uid))
+      | `String (_,0) -> None
+      | `String (start,length) -> Some (
 	`Stmt (!! "Buffer.add_substring _html.Ohm.Html.html _source %d %d ;"
-		  start length) 
+		  start length))
     in
 
     let rec print_root = function 
       | `Render [] -> [ `Stmt "Ohm.Run.return ignore" ] 
       | `Render cells -> 
 	[ `Stmt "Ohm.Run.return (fun _html ->" 
-	; `Indent ((List.map print_cell cells))
+	; `Indent ((BatList.filter_map print_cell cells))
 	; `Stmt ")" ]
       | `Extract (uid,name,tail) -> 
 	( `Stmt (!! "let  _%d = _data # %s in" uid (SyntaxAsset.contents name) ) )
