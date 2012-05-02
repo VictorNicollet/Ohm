@@ -16,6 +16,7 @@ val str : string   -> writer
 val concat : writer list -> writer
 
 val to_json : writer -> Json_type.t
+val to_html_string : writer -> string
 
 module Convenience : sig
     

@@ -57,6 +57,10 @@ let to_json writer =
   Json_type.Object [ "html", Json_type.String (get_html html) ;
 		     "code", JsCode.to_json   (get_js   html) ]
 
+let to_html_string writer = 
+  let html = html_of_writer writer in
+  get_html html 
+
 module Convenience = struct
 
   let script src = 
