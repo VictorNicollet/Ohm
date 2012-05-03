@@ -107,9 +107,9 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer mo
 
   concat (List.map Convenience.script js) html ;
   
-  add_string buffer "<script type=\"text/javascript\"><![CDATA[" ;
+  add_string buffer "<script type=\"text/javascript\">/*<![CDATA[*/" ;
   add_string buffer (JsCode.to_script (JsCode.seq [get_js html ; more_js])) ;
-  add_string buffer "]]></script>" ;  
+  add_string buffer "/*]]>*/</script>" ;  
 
   add_string buffer "</body></html>" ;
 
