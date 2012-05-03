@@ -47,7 +47,8 @@ let ensure () =
     declared := [] ;
   end
 
-let declare controller = 
+let declare server prefix args = 
+  let controller = server, prefix, args in
   let cell = dispatch_declare controller and endpoint = endpoint_of_controller controller in 
   endpoint, fun action -> 
     (match !cell with None -> () 
@@ -55,7 +56,8 @@ let declare controller =
     cell := None ;
     dispatch_define controller action 
     
-let register (controller: ('a,'b) controller) action = 
+let register server prefix args action = 
+  let controller = server, prefix, args in
   dispatch_define controller action ;
   endpoint_of_controller controller 
   

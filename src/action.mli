@@ -303,36 +303,7 @@ module Args : sig
 
 end
 
-(** Determines what URL and server an action maps to. 
-
-    Contains a server, a path prefix and an argument parser. When a request must be dispatched, 
-    every action is checked to determine whether its controller matches the request. One of
-    the actions that match the request is then selected (the one with the longest path prefix or,
-    if both are the same size, an arbitrary but deterministic one). 
-    
-    For instance, for an action to match the URL [http://red.example.com/test/url], 
-    its controller would be defined as: 
-    
-    {[ 
-let red = Action.Convenience.single_domain_server "red.example.com" in
-let _ = Action.(register (red,"test/url",Args.none)) action
-    ]}
-
-    The argument parser may allow the matching of paths longer than the prefix path. 
-    To match the URL [http://red.example.com/user/<id>] for every possible (but mandatory)
-    [<id>] string, one would define the action as: 
-
-    {[
-let _ = Action.(register (red,"view",Args.(r string))) action 
-    ]}
-
-    The [<id>] would then be available in the [run] method as [request # args] (see 
-    {!method:Action.request.args} for more information). 
-*)
-type ('server,'args) controller = 'server server * string * 'args Args.t
-
-(** Raised when no actions match a specific request. Should be avoided by registering an action with 
-    a {!class:Action.Make.controller} that has a path of ["*"] to handle 404 errors.
+(** Raised when no actions match a specific request. 
 *)
 exception Action_not_found of string
       
@@ -365,7 +336,12 @@ val dispatch : #Netcgi.cgi -> unit
 
     Registering an action returns an endpoint that you can use to 
 *)
-val register : ('server,'args) controller -> ('server,'args) t -> ('server,'args) endpoint
+val register : 
+     'server server
+  -> string
+  -> 'args Args.t
+  -> ('server,'args) t 
+  -> ('server,'args) endpoint
 
 (** Declare an action with the dispatcher. This helps return the endpoint before the actual
     action has been defined, and so helps with mutually recursive functions or simply
@@ -385,7 +361,9 @@ let () = Urls.define action
 
 *)
 val declare : 
-     ('server,'args) controller 
+     'server server
+  -> string
+  -> 'args Args.t
   -> ('server,'args) endpoint * (('server,'args) t -> unit) 
 
 (** Run the Fastcgi server with the appropriate default configuration. *)
