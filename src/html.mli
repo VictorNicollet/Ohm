@@ -31,4 +31,5 @@ val print_page :
   -> ?body_classes:string list
   -> title:string
   -> writer
+  -> JsCode.t 
   -> string

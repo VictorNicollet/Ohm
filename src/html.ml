@@ -70,7 +70,7 @@ module Convenience = struct
 
 end
 
-let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer = 
+let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer more_js = 
   
   let html   = create () in
   let buffer = html.html in 
@@ -108,8 +108,8 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer =
   concat (List.map Convenience.script js) html ;
   
   add_string buffer "<script type=\"text/javascript\"><![CDATA[" ;
-  add_string buffer (JsCode.to_script (get_js html)) ;
-  add_string buffer "]]></script>" ;
+  add_string buffer (JsCode.to_script (JsCode.seq [get_js html ; more_js])) ;
+  add_string buffer "]]></script>" ;  
 
   add_string buffer "</body></html>" ;
 
