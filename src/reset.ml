@@ -60,7 +60,6 @@ struct
     end
        
   let check_wrapper f a = 
-    f a ;
-    check () 
+    try f a ; check () with exn -> check () ; raise exn
 
 end

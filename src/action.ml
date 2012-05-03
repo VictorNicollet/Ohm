@@ -115,19 +115,18 @@ module Convenience = struct
   let nilreq s a = new nilreq s a
 
   let single_domain_server ?(secure=false) ?port ?cookies domain = 
-    let defport, protocol = if secure then 443,`HTTPS else 80,`HTTPS in
+    let defport, protocol = if secure then 443,`HTTPS else 80,`HTTP in
     let port = BatOption.default defport port in
     (object
       method protocol  = protocol
       method domain () = domain
       method port   () = port
       method cookie_domain = cookies
-      method matches pr dom po = 
-	if po = port && pr = protocol && domain = dom then Some () else None
-     end : unit server)
+      method matches pr dom po = 	if po = port && pr = protocol && domain = dom then Some () else None
+     end)
 
   let sub_domain_server ?(secure=false) ?port ?cookies suffix = 
-    let defport, protocol = if secure then 443,`HTTPS else 80,`HTTPS in
+    let defport, protocol = if secure then 443,`HTTPS else 80,`HTTP in
     let port = BatOption.default defport port in
     let cut  = String.length suffix in
     (object
