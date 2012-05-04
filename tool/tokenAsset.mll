@@ -52,6 +52,7 @@ and style = shortest
 
   let opens = function 
     | OPEN_LIST _ 
+    | OPEN_OPTION _
     | OPEN_IF _ 
     | OPEN _ 
     | OPEN_SUB _ 
