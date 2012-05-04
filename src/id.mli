@@ -142,6 +142,8 @@ val largest : t
 
 val next : t -> t
 
+val arg : (t -> string) * (string -> t option)
+
 (** The type of a strongly typed identifier module. These modules define a new identifier type tagged
     with a type parameter that carries additional information about the identifier. The new identifier
     type has a special type [t] which is an abbreviation for [[`Unknown] id]: a bottom type.
@@ -178,6 +180,8 @@ module type PHANTOM = sig
   (** Any identifier can be converted to the bottom type identifier. *)
   val decay : 'any id -> t
 
+  val arg : (t -> string) * (string -> t option) 
+
 end
 
 module Phantom : sig
@@ -202,5 +206,7 @@ module Phantom : sig
 
   val to_string : 'any id -> string
   val of_string : string -> t
+
+  val arg : (t -> string) * (string -> t option)
 
 end

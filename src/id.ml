@@ -19,6 +19,8 @@ let length   = 11
 let smallest = ""
 let largest  = String.make length 'z'
 
+let arg = identity, (fun x -> Some x) 
+
 let next_char = function
   | '9' -> 'A'
   | 'Z' -> 'a'
@@ -59,6 +61,7 @@ module Phantom = struct
   let to_json_string = to_json_string
 
   let fmt     = fmt
+  let arg     = identity, (fun x -> Some x)
 
 end
   
@@ -84,5 +87,7 @@ module type PHANTOM = sig
   val of_string : string -> t
 
   val decay : 'any id -> t
+
+  val arg : (t -> string) * (string -> t option)
 
 end
