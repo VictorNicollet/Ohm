@@ -112,6 +112,11 @@ let run callback =
     
 module Convenience = struct
 
+  let get_json req = 
+    match req # post with 
+      | Some (`JSON json) -> Some json 
+      | _                 -> None
+
   let nilreq s a = new nilreq s a
 
   let single_domain_server ?(secure=false) ?port ?cookies domain = 

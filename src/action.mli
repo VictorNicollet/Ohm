@@ -372,6 +372,9 @@ val run : (Netcgi_fcgi.cgi -> unit) -> unit
 (** Helper functions for your convenience. *)
 module Convenience : sig
 
+  (** Get the JSON data out of a request, or [None] if missing. *)
+  val get_json : ('server,'args) request -> Json_type.t option
+
   (** A server that responds to a single domain.
       [let server = single_domain_server "www.domain.com"].
   *)
