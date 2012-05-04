@@ -134,11 +134,11 @@ let generate_asset revpath asset =
 	:: (`Indent [ `Stmt (!! "match _%d with" uid') 
 		    ; `Stmt "| [] ->" 
 		    ; `Indent (print_root if_none) 
-		    ; `Stmt "| Some _list -> " 
-		    ; `Indent [ `Stmt "let _render = Ohm.Run.list_map (fun _data ->" 
+		    ; `Stmt "| _list -> " 
+		    ; `Indent [ `Stmt "let! _render = Ohm.Universal.ohm (Ohm.Run.list_map (fun _data ->" 
 			      ; `Indent (print_root if_list) 
-			      ; `Stmt ") _list in" 
-			      ; `Stmt "Ohm.Run.return (Ohm.Html.concat _list)" ]])
+			      ; `Stmt ") _list) in" 
+			      ; `Stmt "Ohm.Run.return (Ohm.Html.concat _render)" ]])
 	:: (`Stmt "end in") 
 	:: print_root tail 
     in
@@ -147,6 +147,7 @@ let generate_asset revpath asset =
       ( `Stmt header ) 
       :: ( `Stmt "open BatPervasives" ) 
       :: ( `Stmt "let _source = AssetData.source" )
+      :: ( `Stmt "let bind = Ohm.Universal.bind" )
       :: ( `Stmt "let render _data =" )
       :: [ `Indent (print_root root) ]
     in
