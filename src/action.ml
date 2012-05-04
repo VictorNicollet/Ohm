@@ -21,11 +21,12 @@ let dispatch_define (server,prefix,args) action =
   if Util.role = `Web then begin 
 
     let key   = path_clean (lowercase prefix) in 
+    let endpt = endpoint_of_controller (server,prefix,args) in
 
     let value protocol domain port suffix cgi =
       match Args.parse args suffix with None -> None | Some args ->
 	match server # matches protocol domain port with None -> None | Some s ->
-	  Some (server # cookie_domain, action (new fcgi_request s args cgi)) 
+	  Some (server # cookie_domain, action (new fcgi_request endpt s args cgi)) 
     in
 
     Hashtbl.add defined key value

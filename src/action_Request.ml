@@ -6,6 +6,7 @@ open BatPervasives
 open Action_Common
 
 class type ['server,'args] request = object
+  method self   : ('server,'args) Action_Endpoint.endpoint
   method server : 'server
   method path   : string
   method post   : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option
@@ -15,6 +16,8 @@ class type ['server,'args] request = object
 end
   
 class ['server,'args] nilreq (server:'server) (args:'args) = object
+
+  method self (_:'server) (_:'args) = ""
 
   val server = server
   method server = server
@@ -29,7 +32,9 @@ class ['server,'args] nilreq (server:'server) (args:'args) = object
 
 end
  
-class ['server,'args] fcgi_request (server:'server) (args:'args) (cgi:Netcgi.cgi) =
+class ['server,'args] fcgi_request 
+  (endpoint:('server,'args) Action_Endpoint.endpoint)
+  (server:'server) (args:'args) (cgi:Netcgi.cgi) =  
 
   let env = cgi # environment in 
   let post : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option Lazy.t =
@@ -64,7 +69,9 @@ object
   val args   = args
   val server = server
   val post   = post
+  val self   = endpoint
 
+  method self   = self
   method args   = args
   method server = server
   method path   = Lazy.force path      

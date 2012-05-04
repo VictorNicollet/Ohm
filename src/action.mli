@@ -166,10 +166,20 @@ end
   *)
 val more_javascript : JsCode.t -> response -> response
 
+(** An endpoint is a controller that has been bound to an action and can be converted to an URL
+    by receiving all the parameters required to fill in the path and domain. *)
+type ('server,'args) endpoint
+
+(** The URL of an endpoint. *)
+val url : ('server,'args) endpoint -> 'server -> 'args -> string
+
 (** The data carried by an HTTP request. 
 *)
 class type ['server,'args] request = object
  
+  (** The endpoint of the action that received this request. *)
+  method self : ('server,'args) endpoint
+
   (** The server-provided data, of the same type as the server parameter. 
   *)
   method server : 'server
@@ -309,14 +319,7 @@ end
 (** Raised when no actions match a specific request. 
 *)
 exception Action_not_found of string
-      
-(** An endpoint is a controller that has been bound to an action and can be converted to an URL
-    by receiving all the parameters required to fill in the path and domain. *)
-type ('server,'args) endpoint
-
-(** The URL of an endpoint. *)
-val url : ('server,'args) endpoint -> 'server -> 'args -> string
-      
+            
 (** Dispatch a FastCGI request. 
     
     This function extracts the appropriate action, runs it, then sends the result back 
