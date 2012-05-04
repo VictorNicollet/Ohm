@@ -2,7 +2,8 @@ type 'a cell = ('a -> string) * (string -> 'a option)
 type 'args t = ('args -> string list) * (string list -> 'args option)
   
 let string = (fun str -> str), (fun str -> Some str) 
-let int    = string_of_int, (fun i -> try Some (int_of_string i) with _ -> None)
+let int    = string_of_int,   (fun i -> try Some (  int_of_string i) with _ -> None)
+let float  = string_of_float, (fun i -> try Some (float_of_string i) with _ -> None)
   
 let parse (_,f) list = f list
 let generate (g,_) args = g args

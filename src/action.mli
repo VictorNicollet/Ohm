@@ -233,6 +233,9 @@ module Args : sig
   (** An integer cell. *)
   val int : int cell
 
+  (** A floating-point cell. *)
+  val float : float cell
+
   (** The type of an argument parser. 
   *)
   type 'args t = ('args -> string list) * (string list -> 'args option)
