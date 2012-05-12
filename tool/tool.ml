@@ -86,11 +86,20 @@ let putfile path contents =
       Pervasives.close_out channel 
   with exn -> error_writefile path exn 
 
-let error_parse =
-  path_error
-    "Could not parse file."
-    "ohm-tool tried to parse file %S but encountered an error: '%s'"
-
+let error_parse path = function
+  | Asset.ParseError pos ->
+    error
+      "Could not parse file."
+      (Printf.sprintf 
+	 "%s:%d char %d"
+	 path pos.Lexing.pos_lnum Lexing.(pos.pos_cnum - pos.pos_bol))
+	 
+  | exn ->  
+    path_error
+      "Could not parse file."
+      "ohm-tool tried to parse file %S but encountered an error: '%s'"
+      path exn 
+      
 let system command e = 
   try let () = print_endline command in
       let result = Sys.command command in 

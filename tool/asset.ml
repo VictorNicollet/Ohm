@@ -1,9 +1,12 @@
 (* Ohm is © 2012 Victor Nicollet *)
 
+exception ParseError of Lexing.position
+
 let parse lexbuf =
   let reader = TokenAsset.read () in
-  let stream = ParseAsset.file reader lexbuf in
-  stream
+  try let stream = ParseAsset.file reader lexbuf in
+      stream
+  with exn -> raise (ParseError lexbuf.Lexing.lex_curr_p)
   
 let extract_strings streams = 
   List.fold_right 
