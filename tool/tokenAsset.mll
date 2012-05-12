@@ -4,6 +4,31 @@
   open ParseAsset
   open SyntaxAsset
 
+  let string_of_token = function
+    | STR _ -> "%"
+    | EOL _ -> "\n" 
+    | OPEN_LIST _ -> "{#"
+    | CLOSE_LIST _ -> "{/#}"
+    | OPEN_OPTION _ -> "{?"
+    | CLOSE_OPTION _ -> "}"
+    | OPEN_SUB _ -> "{="
+    | CLOSE_SUB _ -> "{/=}"
+    | OPEN_DEF _ -> "{@"
+    | OPEN_SDEF _ -> "{@!"
+    | CLOSE_DEF _ -> "{/@}"
+    | OPEN_IF _ -> "{if"
+    | CLOSE_IF _ -> "{/if}"
+    | ELSE _ -> "{else}"
+    | OPEN _ -> "{"
+    | CLOSE _ -> "}"
+    | STYLE _ -> "<style/>"
+    | EOF -> "EOF"
+    | MODULE (_,_) -> "Module"
+    | DOT _ -> "."
+    | PIPE _ -> "|"
+    | IDENT (_,_) -> "ident"
+    | EQUAL _ -> "="
+    | ERROR (c,_) -> Printf.sprintf "#! %C !#" c
 }
 
 rule outer = parse
@@ -70,9 +95,11 @@ and style = shortest
       match !mode with 
 	| `OUTER -> let tok = outer lexbuf in 
 		    if opens tok then mode := `INNER ;
+		    (* print_string (string_of_token tok) ; *)
 		    tok
 	| `INNER -> let tok = inner lexbuf in 
 		    if closes tok then mode := `OUTER ;
+		    (* print_string (string_of_token tok) ; *)
 		    tok 
 
 }
