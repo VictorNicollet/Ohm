@@ -82,6 +82,7 @@ and style = shortest
     | OPEN_IF _ 
     | OPEN _ 
     | OPEN_SUB _ 
+    | OPEN_SDEF _
     | OPEN_DEF _ -> true
     | _ -> false
 
