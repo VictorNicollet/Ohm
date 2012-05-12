@@ -22,6 +22,7 @@ rule outer = parse
   | "{="      { OPEN_SUB     (pos lexbuf) } 
   | "{/=}"    { CLOSE_SUB    (pos lexbuf) } 
   | "{@"      { OPEN_DEF     (pos lexbuf) }
+  | "{@!"     { OPEN_SDEF    (pos lexbuf) }
   | "{/@}"    { CLOSE_DEF    (pos lexbuf) } 
 
   | "<style>" { let s = style lexbuf in STYLE s }

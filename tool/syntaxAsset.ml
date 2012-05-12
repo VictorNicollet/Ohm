@@ -9,7 +9,7 @@ type cell =
   | Cell_Option of located option * expr * cell list * cell list
   | Cell_List   of located option * expr * cell list * cell list
   | Cell_Sub    of expr * cell list
-  | Cell_Define of located * cell list
+  | Cell_Define of bool * located * cell list
   | Cell_Style  of string
 and expr = located * expr_flag list 
 and expr_flag = located list
@@ -309,7 +309,7 @@ let rec clean_strings = function
 					      clean_strings a,
 					      clean_strings b) :: clean_strings tail
   | Cell_Sub (e,l) :: tail -> Cell_Sub (e,clean_strings l) :: clean_strings tail
-  | Cell_Define (n,l) :: tail -> Cell_Define (n,clean_strings l) :: clean_strings tail
+  | Cell_Define (s,n,l) :: tail -> Cell_Define (s,n,clean_strings l) :: clean_strings tail
 
 (* This extracts the strings from the asset AST into a side buffer ("current") 
    by eliminating duplicate strings. This turns every Cell_String into a 
@@ -322,7 +322,7 @@ type buffered_cell =
     | `List   of located option * expr * buffered_cell list * buffered_cell list
     | `String of int * int
     | `Sub    of expr * buffered_cell list 
-    | `Define of located * buffered_cell list
+    | `Define of bool * located * buffered_cell list
     ]
   
 type extracted = {
@@ -360,8 +360,8 @@ let rec extract_strings extracted list =
 			     extracted, `List (l,e,a,b)
     | Cell_Sub (e,l) -> let extracted, l = extract_strings extracted l in
 			extracted, `Sub (e,l) 
-    | Cell_Define (n,l) -> let extracted, l = extract_strings extracted l in 
-			   extracted, `Define (n,l)
+    | Cell_Define (sub,n,l) -> let extracted, l = extract_strings extracted l in 
+			   extracted, `Define (sub,n,l)
     | Cell_String s -> let extracted, start, length = find extracted s in 
 		       extracted, `String (start, length)
   in
@@ -400,14 +400,17 @@ let rec extract_assets revpath sub (list : buffered_cell list) =
     | `Sub (e,l) -> let sub, l = extract_assets revpath sub l in
 		    sub, `Sub (e,l)
     | `String (s,l) -> sub, `String (s,l) 
-    | `Define (n,l) -> let revpath = n.contents :: revpath in 
-		       let sub, l = extract_assets revpath sub l in
-		       (revpath, l) :: sub, `Call revpath 
+    | `Define (s,n,l) -> let revpath = n.contents :: revpath in 
+			 let sub, l = extract_assets revpath sub l in
+			 (revpath, l) :: sub, 
+			 (if s then `Call revpath else `String (0,0))
   in
   List.fold_right 
     (fun cell (sub,out) -> 
       let sub, cell = extract sub cell in 
-      (sub, cell :: out))
+      match cell with 
+	| `String (_,0) -> (sub,out) 
+	| _ ->  (sub, cell :: out))
     list (sub,[])
 
 (* This extracts expressions from a cell list upward to a root,

@@ -8,7 +8,7 @@
 %token < string > STYLE  
 %token < SyntaxAsset.pos > OPEN_LIST ELSE OPEN_IF END_IF OPEN_OPTION DOT
 %token < SyntaxAsset.pos > OPEN OPEN_SUB CLOSE_SUB OPEN_DEF CLOSE_DEF EOL EQUAL CLOSE PIPE
-%token < SyntaxAsset.pos > CLOSE_IF CLOSE_LIST CLOSE_OPTION
+%token < SyntaxAsset.pos > CLOSE_IF CLOSE_LIST CLOSE_OPTION OPEN_SDEF
 %token < string * SyntaxAsset.pos > STR MODULE IDENT
 %token < char * SyntaxAsset.pos > ERROR
 %token EOF
@@ -35,7 +35,8 @@ cell :
   | OPEN_IF expr CLOSE cells CLOSE_IF { Cell_If ($2,$4,[]) }
   | OPEN_IF expr CLOSE cells ELSE cells CLOSE_IF { Cell_If ($2,$4,$6) }
   | OPEN_SUB expr CLOSE cells CLOSE_SUB { Cell_Sub ($2,$4) }
-  | OPEN_DEF IDENT CLOSE cells CLOSE_DEF { Cell_Define (located $2,$4) }
+  | OPEN_DEF IDENT CLOSE cells CLOSE_DEF { Cell_Define (true,located $2,$4) }
+  | OPEN_SDEF IDENT CLOSE cells CLOSE_DEF { Cell_Define (false,located $2,$4) }
   | OPEN_LIST expr CLOSE cells CLOSE_LIST { Cell_List (None,$2,$4,[]) }
   | OPEN_LIST expr CLOSE cells ELSE cells CLOSE_LIST { Cell_List (None,$2,$4,$6) }
   | OPEN_LIST IDENT EQUAL expr CLOSE cells CLOSE_LIST { Cell_List (Some (located $2),$4,$6,[]) }
