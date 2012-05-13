@@ -97,6 +97,12 @@ let generate_asset revpath asset =
       | `Ohm (uid,uid',tail) -> 
 	(`Stmt (!! "let! _%d = Ohm.Universal.ohm _%d in" uid uid'))
 	:: print_root tail
+      | `AdLib (uid,variant,uid',tail) ->
+	(`Stmt (!! "let! _%d = Ohm.Universal.ohm (Ohm.AdLib.write %s) in" uid
+		   (match uid' with 
+		     | None -> SyntaxAsset.contents variant
+		     | Some uid' -> !! "(%s _%d)" (SyntaxAsset.contents variant) uid')))
+	:: print_root tail
       | `Put (uid,uid',`Raw,tail) -> 
 	(`Stmt (!! "let  _%d _html = Buffer.add_string _html.Ohm.Html.html _%d in" 
 		   uid uid'))

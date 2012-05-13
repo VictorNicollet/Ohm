@@ -28,6 +28,7 @@
     | PIPE _ -> "|"
     | IDENT (_,_) -> "ident"
     | EQUAL _ -> "="
+    | VARIANT (_,_) -> "`Variant"
     | ERROR (c,_) -> Printf.sprintf "#! %C !#" c
 }
 
@@ -59,6 +60,8 @@ and inner = parse
   | [ ' ' '\t' '\r' ] { inner lexbuf } 
   | [ 'A' - 'Z'] [ 'A'-'Z' 'a'-'z' '_' '0'-'9' ] * as str
       { MODULE (str, pos lexbuf) } 
+  | '`' [ 'A' - 'Z'] [ 'A'-'Z' 'a'-'z' '_' '0'-'9' ] * as str
+      { VARIANT (str, pos lexbuf) }
   | '.' { DOT (pos lexbuf) }  
   | '|' { PIPE (pos lexbuf) } 
   | [ 'a' - 'z' ] [ 'A'-'Z' 'a'-'z' '_' '0'-'9' ] * as str 

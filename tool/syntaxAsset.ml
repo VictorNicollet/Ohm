@@ -5,6 +5,7 @@ type pos = Lexing.position * Lexing.position
 type cell = 
   | Cell_String of string
   | Cell_Print  of expr 
+  | Cell_AdLib  of located * expr option
   | Cell_If     of expr * cell list * cell list
   | Cell_Option of located option * expr * cell list * cell list
   | Cell_List   of located option * expr * cell list * cell list
@@ -299,6 +300,7 @@ let rec clean_strings = function
   | Cell_String a :: Cell_String b :: tail -> clean_strings (Cell_String (a ^ b) :: tail) 
   | Cell_String a :: tail -> Cell_String (clean_string a) :: clean_strings tail
   | Cell_Print  x :: tail -> Cell_Print x :: clean_strings tail
+  | Cell_AdLib (v,e) :: tail -> Cell_AdLib (v,e) :: clean_strings tail
   | Cell_If (e,a,b) :: tail -> Cell_If (e,
 					clean_strings a, 
 					clean_strings b) :: clean_strings tail 
@@ -317,6 +319,7 @@ let rec clean_strings = function
 
 type buffered_cell = 
     [ `Print  of expr
+    | `AdLib  of located * expr option
     | `If     of expr * buffered_cell list * buffered_cell list
     | `Option of located option * expr * buffered_cell list * buffered_cell list
     | `List   of located option * expr * buffered_cell list * buffered_cell list
@@ -348,6 +351,7 @@ let rec extract_strings extracted list =
 
   let extract extracted = function
     | Cell_Print e -> extracted, `Print e
+    | Cell_AdLib (v,e) -> extracted, `AdLib (v,e)
     | Cell_Style s -> Buffer.add_string extracted.css s ; extracted, `String (0,0)
     | Cell_If (e,a,b) -> let extracted, a = extract_strings extracted a in
 			 let extracted, b = extract_strings extracted b in 
@@ -377,6 +381,7 @@ let rec extract_strings extracted list =
 
 type clean_cell = 
   [ `Print  of expr
+  | `AdLib  of located * expr option
   | `If     of expr * clean_cell list * clean_cell list
   | `Option of located option * expr * clean_cell list * clean_cell list
   | `List   of located option * expr * clean_cell list * clean_cell list
@@ -388,6 +393,7 @@ type clean_cell =
 let rec extract_assets revpath sub (list : buffered_cell list) = 
   let extract sub = function
     | `Print e    -> sub, `Print e 
+    | `AdLib (v,e) -> sub, `AdLib (v,e)
     | `If (e,a,b) -> let sub, a = extract_assets revpath sub a in
 		     let sub, b = extract_assets revpath sub b in 
 		     sub, `If (e,a,b) 
@@ -424,6 +430,7 @@ type rooted_cell =
 and cell_root = 
   [ `Render  of rooted_cell list 
   | `Extract of int * located * cell_root
+  | `AdLib   of int * located * int option * cell_root
   | `Apply   of int * int * located list * cell_root
   | `Ohm     of int * int * cell_root
   | `Put     of int * int * [ `Raw | `Esc ] * cell_root
@@ -470,6 +477,17 @@ let rec extract_roots ?(accum=[]) (list:clean_cell list) =
     | `Print expr :: tail -> let uid, fill = split_expr ~printed:true expr in 
 			     let accum = `Print uid :: accum in
 			     fill (extract_roots ~accum tail) 
+    | `AdLib (variant,expr) :: tail -> let uid, fill = match expr with 
+                                         | None -> None, (fun inner -> inner) 
+					 | Some e -> let uid, fill = split_expr e in
+						     Some uid, fill
+				       in
+				       let uid' = getuid () in
+				       let accum = `Print uid' :: accum in
+				       let fill inner = 
+					 fill (`AdLib (uid', variant, uid, inner))
+				       in
+				       fill (extract_roots ~accum tail) 
     | `Sub (e,l) :: tail -> let uid, fill = split_expr e in 
 			    let uid' = getuid () in
 			    let fill inner = fill (`Sub (uid', uid, extract_roots l, inner)) in

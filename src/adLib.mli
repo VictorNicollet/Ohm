@@ -25,6 +25,10 @@ end
 (** Extract a source from the context and grab a key out of it. *)
 val get : 'key -> ('key # ctx, string) Run.t
 
+(** Extract a source from the context and grab a key out of it, 
+    rendered as HTML. *)
+val write : 'key -> ('key # ctx, Html.writer) Run.t
+
 (** {2 Utilities} *)
 
 (** Alias for [Printf.sprintf]. *)
