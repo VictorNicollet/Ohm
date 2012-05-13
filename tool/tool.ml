@@ -269,6 +269,21 @@ let parsed_assets = lazy begin
     List.map (fun (file,asset) -> Filename.concat Path.build file, asset) generated 
   in
 
+  (* Extracting AdLib *)
+
+  let parse_adlib (kind,asset) = 
+    match kind with 
+      | `Coffee | `Less | `View -> None 
+      | `AdLib -> Some (asset, readfile asset) 
+  in
+
+  let adlibs = BatList.filter_map parse_adlib assets in
+  let generated = 
+    (List.map (fun (file,asset) -> Filename.concat Path.build file, asset) 
+       (Asset.generate_adlib adlibs))
+    @ generated 
+  in
+      
   (* Extracting LESS *)
   
   let parse_css (kind,asset) =
