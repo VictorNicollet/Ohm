@@ -7,6 +7,8 @@ class ['key] ctx (source : 'key source) = object
   method adlib = adlib
 end
 
+let get key = 
+  Run.map (fun ctx -> ctx # adlib key) Run.context 
 
 let (!!) fmt = Printf.sprintf fmt 
 let const x _ = x

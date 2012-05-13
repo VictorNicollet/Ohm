@@ -22,6 +22,9 @@ class ['key] ctx : 'key source -> object
   method adlib : 'key source
 end
 
+(** Extract a source from the context and grab a key out of it. *)
+val get : 'key -> ('key # ctx, string) Run.t
+
 (** {2 Utilities} *)
 
 (** Alias for [Printf.sprintf]. *)
