@@ -160,3 +160,40 @@ let generate_asset revpath asset =
   in
 
   [ ml_of_revpath revpath, the_struct ] 
+
+let distribute_adlib (defs,languages) (path,contents) = 
+  let file = Filename.basename path in 
+  if file = "def.adlib.ml" then ((path,contents) :: defs, languages) else
+    let prefix  = String.sub file 0 (String.length file - String.length ".adlib.ml") in
+    let current = try BatPMap.find prefix languages with Not_found -> [] in
+    (defs, BatPMap.add prefix ((path,contents) :: current) languages) 
+
+let generate_adlib_block prefix suffix contents = 
+  prefix 
+  ^ String.concat "" (List.map begin fun (path,contents) ->
+    (!! "\n# 0 %S\n" path) ^ contents   
+  end contents) 
+  ^ suffix
+
+let generate_adlib assets = 
+
+  let (defs,languages) = List.fold_left distribute_adlib ([],BatPMap.empty) assets in
+
+  let key = generate_adlib_block "type key = \n[ `EMPTY" "\n]\n\n" defs in    
+  let langnames = BatPMap.foldi (fun k _ l -> k :: l) languages [] in 
+
+  let mli = header ^ "\n" ^ key ^ 
+    (String.concat "" (List.map (fun l -> "val "^l^" : key Ohm.AdLib.source\n") langnames))
+  in
+
+  let languages = BatPMap.foldi begin fun k v l ->
+    (generate_adlib_block
+      ("let "^k^" : key -> string = function\n| `EMPTY -> \"\"")
+      ";;" v) :: l 
+  end languages [] in
+
+  let ml = header ^ "\nopen Ohm.AdLib\n\n" ^ key ^
+    (String.concat "\n\n" languages) 
+  in
+  
+  [ "asset_AdLib.ml", ml ; "asset_AdLib.mli" , mli ]
