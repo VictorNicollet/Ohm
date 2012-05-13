@@ -186,7 +186,7 @@ let () =
  
 (* Listing assets (a common subroutine) ---------------------------------------------------- *)
 
-type asset = [ `View | `Coffee | `Less ] 
+type asset = [ `View | `Coffee | `Less | `AdLib ] 
 
 let assets = lazy begin 
   
@@ -196,7 +196,8 @@ let assets = lazy begin
       if item <> ".htm" && BatString.ends_with item ".htm" then ok `View else
 	if item <> ".css" && BatString.ends_with item ".css" then ok `Less else
 	  if item <> ".coffee" && BatString.ends_with item ".coffee" then ok `Coffee else
-	    accum 
+	    if item <> ".adlib.ml" && BatString.ends_with item ".adlib.ml" then ok `AdLib else
+	      accum 
     end accum (readdir path)
   in
 
@@ -230,7 +231,7 @@ let parsed_assets = lazy begin
   (* Extracting HTML *)
 
   let parse_html (kind,asset) = 
-    match kind with `Coffee | `Less -> None | `View -> 
+    match kind with `Coffee | `Less | `AdLib -> None | `View -> 
       let result = readfile_lexbuf asset Asset.parse in
       match result with 
 	| Ok stream -> Some (asset,stream) 
@@ -271,7 +272,9 @@ let parsed_assets = lazy begin
   (* Extracting LESS *)
   
   let parse_css (kind,asset) =
-    match kind with `Coffee | `View -> None | `Less -> Some (asset, readfile asset)
+    match kind with 
+      | `Coffee | `View | `AdLib -> None 
+      | `Less -> Some (asset, readfile asset)
   in
 
   let css = BatList.filter_map parse_css assets in
@@ -286,7 +289,9 @@ let parsed_assets = lazy begin
   (* Extracting COFFEE *)
 
   let parse_coffee (kind,asset) =
-    match kind with `Less | `View -> None | `Coffee -> Some (asset, readfile asset)
+    match kind with 
+      | `Less | `View | `AdLib -> None
+      | `Coffee -> Some (asset, readfile asset)
   in
 
   let coffee = BatList.filter_map parse_coffee assets in
