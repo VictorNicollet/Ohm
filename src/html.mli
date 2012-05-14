@@ -14,6 +14,7 @@ val esc : string   -> writer
 val str : string   -> writer
 
 val concat : writer list -> writer
+val implode : writer list -> writer -> writer
 
 val to_json : writer -> Json_type.t
 val to_html_string : writer -> string

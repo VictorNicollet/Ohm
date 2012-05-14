@@ -49,6 +49,13 @@ let esc s html =
 
 let concat list html = List.iter ((|>) html) list
 
+let implode list sep html = 
+  let rec process = function 
+    | [ ] -> ()
+    | [x] -> x html
+    | h :: t -> h html ; sep html ; process t
+  in process list 
+
 let get_html html = Buffer.contents html.html
 let get_js   html = JsCode.seq (List.rev !(html.js)) 
   
