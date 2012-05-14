@@ -52,8 +52,8 @@ let declare server prefix args =
   let controller = server, prefix, args in
   let cell = dispatch_declare controller and endpoint = endpoint_of_controller controller in 
   endpoint, fun action -> 
-    (match !cell with None -> () 
-      | Some key -> Util.log "Action: FAIL : action %S defined twice" key) ;
+    if !cell = None then 
+      Util.log "Action: FAIL : action %S defined twice" (path_clean (lowercase prefix)) ;
     cell := None ;
     dispatch_define controller action 
     
