@@ -1,4 +1,4 @@
-(* Jogging is © 2011 Victor Nicollet *)
+(* Ohm is © 2011 Victor Nicollet *)
 
 type 'a t = {
   to_json : 'a -> Json_type.t ;
