@@ -381,6 +381,13 @@ module DocView = functor (Def:ImplTypes.DOC_DEF) -> struct
   let doc key = 
     Run.map (List.map (fun x -> (x :> doc_ivd))) (doc_query ~startkey:key ~endkey:key ())
 
+  let doc_query_first ?startkey ?startid ?endkey ?endid ?descending ?endinclusive () = 
+    doc_query ?startkey ?startid ?endkey ?endid ?descending ?endinclusive ~limit:1 ()
+    |> Run.bind begin function 
+	| []     -> Run.return None
+	| h :: _ -> Run.return (Some h)
+    end
+		      
 end
 
 module ReduceView = functor (Def:ImplTypes.REDUCE_DEF) -> struct 

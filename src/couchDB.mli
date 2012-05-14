@@ -188,6 +188,16 @@ module type DOC_VIEW = sig
     -> unit 
     -> (#ctx, doc_kivd list) Run.t
 
+  val doc_query_first :  
+       ?startkey:doc_key
+    -> ?startid:Id.t
+    -> ?endkey:doc_key
+    -> ?endid:Id.t
+    -> ?descending:bool
+    -> ?endinclusive:bool
+    -> unit 
+    -> (#ctx, doc_kivd option) Run.t
+
 end
 
 module DocView : 
