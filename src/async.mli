@@ -17,7 +17,8 @@ type implementation
     CouchDB context, since that context is used to save and load everything. 
 *)
 class virtual ctx : object
-  method virtual couchdb : CouchDB.ctx
+  method virtual couchDB : CouchDB.implementation
+  method virtual time    : float
   method async : implementation
 end
 
@@ -36,6 +37,18 @@ exception Reschedule
     @param delay Delay the execution of the task by this many seconds. 
 *)
 type ('ctx,'a) task = ?delay:float -> 'a -> ('ctx,unit) Run.t
+
+(** How long does the execution process lock a task for? This is by 
+    definition the number of seconds between the first and second
+    attempt to execute a task. There is no third attempt. This is
+    currently 10 minutes. 
+*)
+val delay : float
+
+(** When the asynchronous runner runs out of tasks to perform, it sleeps
+    for this duration, in seconds. This is currently 2 seconds.
+*)
+val sleep : float
 
 (** A task execution environment, using a database to save data. *)
 module Make : functor(DB:CouchDB.CONFIG) -> sig

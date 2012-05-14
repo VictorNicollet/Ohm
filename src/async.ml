@@ -2,13 +2,16 @@
 
 open Universal
 
-type implementation = Id.t ref
+type implementation = unit
 
 class virtual ctx = object
-  method virtual couchdb : CouchDB.ctx
-  val async = ref (Id.gen ())
-  method async = async
+  method virtual couchDB : CouchDB.implementation
+  method virtual time    : float
+  method async = ()
 end
+
+let delay = 600. 
+let sleep = 2.
 
 exception Reschedule
 
@@ -16,15 +19,136 @@ type ('ctx,'a) task = ?delay:float -> 'a -> ('ctx,unit) Run.t
 
 module Make = functor(DB:CouchDB.CONFIG) -> struct
 
-  let stats () = return (object
-    method failed = 0
-    method pending = 0
-    method running = 0
-  end) 
-
-  let save_task delay name args = return ()
   let log fmt = Util.log fmt
-  let run_task defined ctx = None
+
+  module Float = Fmt.Float
+  module Json  = Fmt.Json
+
+  module Task = struct
+    module T = struct
+      type json t = {
+	time    "t" : Float.t ;
+	name    "n" : string ;
+	calls   "c" : int ;
+	args    "a" : Json.t 
+      }
+    end
+    include T
+    include Fmt.Extend(T)
+  end
+
+  let lock until t = 
+    Task.({ t with time = until ; calls = succ t.calls })
+
+  let unlock t = 
+    Task.({ t with calls = pred t.calls })
+
+  (* These functions implement the task manipulation at the database level. 
+     They depend on CouchDB for doing the work. *)
+
+  module MyDB = CouchDB.Database(DB)
+  module MyTable = CouchDB.Table(MyDB)(Id)(Task)
+  module Design = struct
+    module Database = MyDB
+    let name = "async"
+  end
+
+  module StatsView = CouchDB.ReduceView(struct
+    module Key    = Fmt.Unit
+    module Value  = Fmt.Make(struct type json t = int * int * int end)
+    module Design = Design 
+    let name = "stats"
+    let map  = "var c = doc.c, a = [0,0,0]; 
+                if (c > 2) c = 2;
+                a[c] = 1;
+                emit(null,a);"
+    let reduce = "var a = [0,0,0];
+                  for (var i = 0; i < values.length; ++i) {
+                    a[0] += values[i][0];
+                    a[1] += values[i][1];
+                    a[2] += values[i][2];
+                  } 
+                  return a;"
+    let group = false
+    let level = None
+  end)
+
+  let stats () = 
+    let! stats = ohm $ StatsView.reduce () in
+    let  _0, _1, _2 = BatOption.default (0,0,0) stats in
+    return (object
+      method pending = _0
+      method running = _1
+      method failed  = _2
+    end) 
+
+  let save_task delay name args = 
+    let  id   = Id.gen () in
+    let! time = ohmctx (#time) in
+    let  task = Task.({ time ; calls = 0 ; name ; args }) in
+    let! _    = ohm $ MyTable.transaction id (MyTable.insert task) in
+    return ()
+
+  module TaskView = CouchDB.DocView(struct
+    module Key    = Float
+    module Value  = Fmt.Unit
+    module Doc    = Task
+    module Design = Design
+    let name = "next"
+    let map  = "if (doc.c < 2) emit(doc.t);"
+  end)
+
+  let rec find_next retries =
+
+    if retries = 0 then return None else
+
+      let! now = ohmctx (#time) in
+      
+      let! doc = ohm_req_or (return None) $ TaskView.doc_query_first 
+	~startkey:0.0
+	~endkey:now
+	()
+      in
+      
+      let id, task = doc # id, doc # doc in
+      let unlock   = now +. delay in
+      let task     = lock unlock task in
+      
+      let! result  = ohm $ MyTable.put id task in 
+      match result with 
+	| `collision -> find_next (retries-1)
+	| `ok        -> return $ Some (id,task)
+
+  let run_next defined reschedule = 
+    
+    let! id, task = ohm_req_or (return (Some sleep)) $ find_next 5 in 
+
+    let  () = log "Ohm.Async: run task %s : %S" (Id.str id) task.Task.name in
+
+    (* Specify a reschedule operation in case we're interrupted by [raise Reschedule] *)
+    let  () = reschedule := (
+      let! _ = ohm $ MyTable.transaction id (MyTable.insert (unlock task)) in
+      return (log "Ohm.Async: reschedule %s" (Id.str id))
+    )  in
+
+    let call = try BatPMap.find task.Task.name defined with Not_found -> 
+      log "Ohm.Async: task %S does not exist" task.Task.name ;
+      ( fun json -> return () ) 
+    in
+    
+    let! () = ohm $ call task.Task.args in    
+    let! _  = ohm $ MyTable.transaction id MyTable.remove in
+    
+    return None
+
+  let run_task defined ctx = 
+    let reschedule = ref (return ()) in
+    try Run.eval ctx (run_next defined reschedule) 
+    with 
+      | Reschedule -> Run.eval ctx (!reschedule) ; None
+      | exn -> log "Ohm.Async: task failed with %S" (Printexc.to_string exn) ; None
+
+  (* This is the manager. It has no dependency on CouchDB. *)
 
   class ['ctx] manager = object (self)
     constraint 'ctx = #ctx 
