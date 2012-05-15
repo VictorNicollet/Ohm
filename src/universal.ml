@@ -17,6 +17,10 @@ let req_or default opt callback = match opt with
   | Some value -> callback value
   | None -> default
 
+let nothrow_or default expr callback = 
+  let what = try Some (Lazy.force expr) with _ -> None in
+  req_or default what callback 
+
 let true_or default t callback = 
   if t then callback () else default
 
