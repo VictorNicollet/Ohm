@@ -27,6 +27,11 @@ let true_or default t callback =
 let ohm_req_or default query callback = 
   ohm query (fun x -> req_or default x callback)
 
+let ohm_ok_or ifbad query callback = 
+  ohm query (function 
+    | Bad bad -> ifbad bad
+    | Ok  ok  -> callback ok)
+
 let optional value func callback = 
   match value with 
     | None -> callback None
