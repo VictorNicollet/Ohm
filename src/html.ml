@@ -77,7 +77,7 @@ module Convenience = struct
 
 end
 
-let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer more_js = 
+let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title writer more_js = 
   
   let html   = create () in
   let buffer = html.html in 
@@ -95,6 +95,11 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?(body_classes=[]) ~title writer mo
     add_string buffer "<link rel=\"stylesheet\" href=\"" ;
     esc_to_buffer css buffer ;
     add_string buffer "\"/>") css ;
+
+  (match favicon with None -> () | Some link -> 
+    add_string buffer "<link rel=\"shortcut icon\" href\"" ;
+    esc_to_buffer link buffer ;
+    add_string buffer "\"/>") ;
 
   add_string buffer head ;
 

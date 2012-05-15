@@ -29,6 +29,7 @@ val print_page :
      ?css:string list
   -> ?js:string list
   -> ?head:string
+  -> ?favicon:string
   -> ?body_classes:string list
   -> title:string
   -> writer
