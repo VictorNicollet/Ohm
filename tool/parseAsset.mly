@@ -50,8 +50,10 @@ cell :
 ;
   
 expr : 
-  | IDENT             { (located $1,[]) } 
-  | IDENT PIPE pipes  { (located $1,$3) } 
+  | MODULE DOT func   { (None, [located $1 :: $3]) }  
+  | MODULE DOT func PIPE pipes { (None, (located $1 :: $3) :: $5) }  
+  | IDENT             { (Some (located $1),[]) } 
+  | IDENT PIPE pipes  { (Some (located $1),$3) } 
 ;
 
 pipes : 

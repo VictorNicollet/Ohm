@@ -12,7 +12,7 @@ type cell =
   | Cell_Sub    of expr * cell list
   | Cell_Define of bool * located * cell list
   | Cell_Style  of string
-and expr = located * expr_flag list 
+and expr = located option * expr_flag list 
 and expr_flag = located list
 and located = {
   contents : string ;
@@ -429,7 +429,7 @@ type rooted_cell =
 
 and cell_root = 
   [ `Render  of rooted_cell list 
-  | `Extract of int * located * cell_root
+  | `Extract of int * located option * cell_root
   | `AdLib   of int * located * int option * cell_root
   | `Apply   of int * int * located list * cell_root
   | `Ohm     of int * int * cell_root

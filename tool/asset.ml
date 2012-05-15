@@ -87,14 +87,20 @@ let generate_asset revpath asset =
 	[ `Stmt "Ohm.Run.return (fun _html ->" 
 	; `Indent ((BatList.filter_map print_cell cells))
 	; `Stmt ")" ]
-      | `Extract (uid,name,tail) -> 
-	let contents = SyntaxAsset.contents name in
-	if contents = "this" then
-	  ( `Stmt (!! "let  _%d = _data in" uid ) )
-	  :: print_root tail
-	else
-	  ( `Stmt (!! "let  _%d = _data # %s in" uid contents ) )
-	  :: print_root tail	  
+      | `Extract (uid,name,tail) -> begin
+	match name with 
+	  | Some name -> 
+	    let contents = SyntaxAsset.contents name in
+	    if contents = "this" then
+	      ( `Stmt (!! "let  _%d = _data in" uid ) )
+	      :: print_root tail
+	    else
+	      ( `Stmt (!! "let  _%d = _data # %s in" uid contents ) )
+	      :: print_root tail
+	  | None -> 
+	    ( `Stmt (!! "let _%d = () in" uid))
+	    :: print_root tail
+      end
       | `Apply (uid,uid',what,tail) -> 
 	( `Stmt (!! "let  _%d = _%d |> %s in" uid uid' 
 		    (String.concat "." (List.map SyntaxAsset.contents what))))
