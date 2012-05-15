@@ -162,6 +162,9 @@ module Path = struct
 
   let assetml = Filename.concat build "asset.ml"
 
+  let jsml    = Filename.concat build "js.ml"
+  let jsmli   = Filename.concat build "js.mli"
+
 end
 
 (* Determine what we are expected to do ---------------------------------------------------- *)
@@ -315,7 +318,14 @@ let parsed_assets = lazy begin
   let all_coffee = String.concat "\n" (List.map snd coffee) in
   let coffee_md5 = Digest.to_hex (Digest.string all_coffee) in
 
-  let generated = (Path.coffee, all_coffee) :: generated in  
+  let js_ml, js_mli = Coffee.extract_types all_coffee in
+
+  let generated = 
+    (Path.jsml, js_ml)
+    :: (Path.jsmli, js_mli) 
+    :: (Path.coffee, all_coffee)
+    :: generated 
+  in  
 
   (* Generating the "assets" file *)
 
