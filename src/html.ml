@@ -97,7 +97,7 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title 
     add_string buffer "\"/>") css ;
 
   (match favicon with None -> () | Some link -> 
-    add_string buffer "<link rel=\"shortcut icon\" href\"" ;
+    add_string buffer "<link rel=\"shortcut icon\" href=\"" ;
     esc_to_buffer link buffer ;
     add_string buffer "\"/>") ;
 
