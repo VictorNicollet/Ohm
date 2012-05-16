@@ -36,6 +36,7 @@ let extract_types coffee =
 
   (* Generate the source code *)
   let type_fmt = function 
+    | "html"        -> None, !! "Ohm.Html.to_json %s"
     | "int"         -> None, !! "Json_type.Int    %s"
     | "string"      -> None, !! "Json_type.String %s"
     | "float"       -> None, !! "Json_type.Float  %s"
@@ -45,7 +46,7 @@ let extract_types coffee =
     | "float list"  -> None, !! "Json_type.Array (List.map (fun _x -> Json_type.Float _x) %s)" 
     | "bool list"   -> None, !! "Json_type.Array (List.map (fun _x -> Json_type.Bool _x) %s)" 
     | other         -> let name = !! "F%d" (genuid ()) in
-		       let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  type json t = %s\nend)"
+		       let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  open Ohm.Fmt\n  type json t = %s\nend)"
 			 name other 
 		       in
 		       Some fmt, !! "%s.to_json %s" name
