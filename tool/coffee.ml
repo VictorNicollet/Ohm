@@ -108,8 +108,11 @@ let extract_types coffee =
       List.map 
 	(fun (opt,name,t,_) -> !! "%s%s:%s" (if opt then "?" else "") name t) types
     in
-    !! "val %s : %s -> unit -> Ohm.JsCode.t"
-      name (String.concat " -> " params)  
+    if types = [] then
+      !! "val %s : unit -> Ohm.JsCode.t" name 
+    else 
+      !! "val %s : %s -> unit -> Ohm.JsCode.t"
+	name (String.concat " -> " params)  
   in
 
   let ml = 
