@@ -32,7 +32,7 @@ let ohm_ok_or ifbad query callback =
     | Bad bad -> ifbad bad
     | Ok  ok  -> callback ok)
 
-let optional value func callback = 
+let opt func value callback = 
   match value with 
     | None -> callback None
     | Some value -> func value (fun result -> callback (Some result)) 
