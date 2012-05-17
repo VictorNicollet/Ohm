@@ -18,3 +18,13 @@ let endpoint_of_controller (server,prefix,parse) =
     String.concat "/" 
       ( Server.server_root server s :: prefix :: 
 	  List.map (Netencoding.Url.encode ~plus:false) (Args.generate parse a))
+
+let reprefix f str sub s a = 
+  let url = f s a in
+  if BatString.starts_with url str then
+    sub ^ BatString.tail url (String.length str)  
+  else
+    str
+  
+let setargs f a s () = 
+  f s a 

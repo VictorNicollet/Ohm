@@ -170,6 +170,21 @@ val more_javascript : JsCode.t -> response -> response
     by receiving all the parameters required to fill in the path and domain. *)
 type ('server,'args) endpoint
 
+(** Reprefix an endpoint : replaces a prefix with another. This can be useful when the client-side
+    URLs are not exactly the same as those on the server. Typical example: 
+
+    {[
+    reprefix endpoint "user/ajax" "user/#"
+    ]}
+
+    This means that the url going to the endpoint [/user/ajax/profile] would be rendered as
+    [/user/#/profile].
+*)
+val reprefix : ('server,'args) endpoint -> string -> string -> ('server,'args) endpoint
+
+(** Set the args section of an endpoint. *)
+val setargs : ('server,'args) endpoint -> 'args -> ('server,unit) endpoint
+
 (** The URL of an endpoint. *)
 val url : ('server,'args) endpoint -> 'server -> 'args -> string
 
