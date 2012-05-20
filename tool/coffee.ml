@@ -47,7 +47,7 @@ let extract_types coffee =
     | "float list"  -> None, !! "Json.Array (List.map (fun _x -> Json.Float _x) %s)" 
     | "bool list"   -> None, !! "Json.Array (List.map (fun _x -> Json.Bool _x) %s)" 
     | other         -> let name = !! "F%d" (genuid ()) in
-		       let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  type json t = %s\nend)"
+		       let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  type json t = (%s)\nend)"
 			 name other 
 		       in
 		       Some fmt, !! "%s.to_json %s" name
