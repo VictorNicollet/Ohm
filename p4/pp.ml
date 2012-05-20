@@ -392,7 +392,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	      let t = recurse id t in
 	      <:expr< $t$, $acc$ >>
 	    end l <:expr<  >> in
-	    let expr = <:expr< `$ident (v#name)$ ( $list$ ) >> in
+	    let expr = <:expr< `$ident (v#name)$ ( $tup:list$ ) >> in
 	    <:match_case< $patt$ -> $expr$ >>			    
 	  end 
 	in
