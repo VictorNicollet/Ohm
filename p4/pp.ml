@@ -720,9 +720,14 @@ let generate_type _loc (def:typexpr) =
                    let _loc = loc (ctor # name) in
 		   let name = ident (ctor # name) in
 		   let ctor = match ctor # typ with 
-		     | [] -> <:ctyp< `$name$ >> 
-		     | l -> let l = List.map recurse l in
-			    <:ctyp< `$name$ of $list:l$ >>
+		     | [] -> <:ctyp< `$name$ >>
+		     | [t] -> 
+		       let t = recurse t in
+		       <:ctyp< `$name$ of $t$ >>
+		     | l -> 
+		       let l = List.fold_right (fun t acc -> <:ctyp< $recurse t$ * $acc$ >>) l <:ctyp< >> in
+		       let t = <:ctyp< ( $tup:l$ ) >> in
+		       <:ctyp< `$name$ of $t$ >>
 		   in 
 		   <:ctyp< $ctor$ | $acc$ >>
 
