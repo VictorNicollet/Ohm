@@ -837,7 +837,7 @@ EXTEND Gram
       
       | t = typexpr ; u = typemod -> (_loc, `param (u,t))
       
-      | "("; s = strtype; ","; t = typexpr; ")"; u = typemod -> (_loc,`param2 (u,s,t))
+      | "("; "!"; s = strtype; ","; t = typexpr; ")"; u = typemod -> (_loc,`param2 (u,s,t))
       
       | "<"; m = object_members  -> (_loc,`obj m) 
       
