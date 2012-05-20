@@ -100,7 +100,7 @@ let parse_record src recurse _loc list return =
 
   let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
 
-  let set i e = <:expr< $lid:"_t_" ^ string_of_int i$ := Some $e$ >> in
+  let set i e = <:expr< $lid:"_t_" ^ string_of_int i$.val := Some $e$ >> in
 
   let test = 
     let cases = List.fold_left begin fun acc (i,t) -> 
@@ -116,7 +116,7 @@ let parse_record src recurse _loc list return =
   let return = return l in
   
   let expr = List.fold_left begin fun acc (i,t) -> 
-    let from = <:expr< ! $lid:"_t_"^string_of_int i$ >> in
+    let from = <:expr< $lid:"_t_"^string_of_int i$.val >> in
     let patt = <:patt< $lid:"_t_"^string_of_int i$ >> in
     let none = match t # default with 
       | None -> error ("field \"" ^ (snd t # label) ^ "\"") src 
