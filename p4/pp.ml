@@ -563,7 +563,7 @@ let generate_json_of_t _loc (def:typexpr) =
         let m = match v # typ with 
 	  | [] -> <:match_case< `$ident (v#name)$ -> $e$ >>
 	  | [t] -> begin
-	    let patt = <:patt< $uid:ident (v#name)$ _t_ >> in			  
+	    let patt = <:patt< `$ident (v#name)$ _t_ >> in			  
 	    let t = recurse <:expr< _t_ >> t in
 	    let e = <:expr< [ $e$ :: $t$ ] >> in
 	    <:match_case< $patt$ -> Json.Array $e$ >>			    
@@ -574,7 +574,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< $id:id$ , $acc$ >> 
 	    end l <:patt< >> in
-	    let patt = <:patt< $uid:ident (v#name)$ $patt$ >> in			  
+	    let patt = <:patt< `$ident (v#name)$ $patt$ >> in			  
 	    let list = List.fold_right begin fun (i,t) acc -> 
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      let id = <:expr< $id:id$ >> in
