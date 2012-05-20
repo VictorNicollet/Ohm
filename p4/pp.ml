@@ -331,7 +331,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	let t  = recurse id t in
 	<:expr< $t$, $acc$ >>
       end l <:expr< >> in
-      let ok = <:match_case< $patt$ -> ($expr$) >> in
+      let ok = <:match_case< $patt$ -> ($tup:expr$) >> in
       let nok = <:match_case< _ -> $error "tuple" src$ >> in
       <:expr< match $src$ with [ $ok$ | $nok$ ] >>
     end
@@ -521,7 +521,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	let t = recurse id t in
 	<:expr< [ $t$ :: $acc$ ] >>
       end l <:expr< [] >> in
-      let bind = <:binding< $patt$ = $src$ >> in
+      let bind = <:binding< ($tup:patt$) = $src$ >> in
       <:expr< let $bind$ in $list$ >> 
     end 
 
