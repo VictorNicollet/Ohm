@@ -128,7 +128,7 @@ let parse_record src recurse _loc list return =
     <:expr< match k with [ $cases$ ] >>
   in
   
-  let read = <:expr< List.fold_left (fun $patt$ (k,v) -> $test$) $init$ _t_ >> in
+  let read = <:expr< List.fold_left (fun $patt$ (k,v) -> $test$) $init$ _l_ >> in
   
   let return = return l in
   
@@ -145,7 +145,7 @@ let parse_record src recurse _loc list return =
   end return l in
   
   let expr = <:expr< let $patt$ = $read$ in $expr$ >> in
-  let ok   = <:match_case< Json.Object _t_ -> $expr$ >> in
+  let ok   = <:match_case< Json.Object _l_ -> $expr$ >> in
   let nok  = <:match_case< _ -> $error "object" src$ >> in
   <:expr< match $src$ with [ $ok$ | $nok$ ] >>
 			      
