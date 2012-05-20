@@ -57,3 +57,9 @@ let group list =
 let group_stable list = 
   List.rev (List.fold_left (fun acc (k,v) -> group_insert k v acc) [] (List.rev list))
 
+let of_json key value json = 
+  let assoc = Json.to_assoc json in
+  List.map (fun (k,v) -> key k, value v) assoc
+
+let to_json key value list = 
+  Json.Object (List.map (fun (k,v) -> key k, value v) list)
