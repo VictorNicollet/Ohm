@@ -574,7 +574,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< $id:id$ , $acc$ >> 
 	    end l <:patt< >> in
-	    let patt = <:patt< `$ident (v#name)$ $patt$ >> in			  
+	    let patt = <:patt< `$ident (v#name)$ $tup:patt$ >> in			  
 	    let list = List.fold_right begin fun (i,t) acc -> 
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      let id = <:expr< $id:id$ >> in
