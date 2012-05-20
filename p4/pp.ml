@@ -696,7 +696,7 @@ let generate_type _loc (def:typexpr) =
     | `tuple t -> let t = List.fold_right begin fun t acc -> 
                     <:ctyp< $recurse t$ * $acc$ >>
                   end t <:ctyp< >> in
-		  <:ctyp< ( $t$ ) >> 
+		  <:ctyp< ( $tup:t$ ) >> 
 		  
     | `variant v -> let l = List.fold_right begin fun ctor acc -> 
       
