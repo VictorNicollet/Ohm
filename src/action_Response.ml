@@ -111,8 +111,8 @@ let process suffix (cgi : Netcgi.cgi) response =
 	List.fold_left (fun acc (name,value) ->
 	  try ignore (List.assoc name acc) ; acc with Not_found -> (name,value) :: acc
 	) [] full
-        |> Json_type.Build.objekt
-	|> (Json_io.string_of_json ~recursive:true ~compact:true)
+        |> Json.of_assoc
+	|> Json.to_string
       in
       ignore (out_channel # output json 0 (String.length json)) 
   end 

@@ -10,10 +10,10 @@ module ImplDB     = CouchDB_database
 (* Small utility functions for Json field manipulation. *)
 
 let json_replace field value obj = 
-  try Json_type.Browse.objekt obj
+  try Json.to_assoc obj
       |> BatList.remove_assoc field
       |> BatList.cons (field, value)
-      |> Json_type.Build.objekt
+      |> Json.of_assoc
   with _ -> obj 
 
 module Database = functor (Config:ImplTypes.CONFIG) -> struct
@@ -46,7 +46,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
       if retries <= 0 then Bad exn else query_all_docs ~retries:(retries-1) start limit in
 
     let key k = 
-      Json_io.string_of_json ~recursive:true ~compact:true (Json_type.String k) in
+      Json.to_string (Json.String k) in
 
     let keep = function (x, None) -> None | (x, Some y) -> Some (x,y) in
     let args = BatList.filter_map keep [
@@ -65,13 +65,13 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 
     try Util.logreq "GET %s" url ;
 	let json_str = Http_client.Convenience.http_get url in
-	try let list = Json_type.Browse.(
-	      Json_io.json_of_string ~recursive:true json_str 
-	      |> (objekt |- List.assoc "rows" |- array)
-	      |> List.map (objekt |- List.assoc "id" |- string |- Id.of_string)
-	    ) in	  
+	try let list = 
+	      Json.of_string json_str 
+	      |> Json.to_object (fun ~opt ~req -> Json.to_array (req "rows"))
+	      |> List.map (Json.to_object (fun ~opt ~req -> Id.of_json (req "id")))
+	    in 
 	    Ok list	    
-	with Json_type.Json_error error as exn ->
+	with Json.Error error as exn ->
 	  Util.log "CouchDB : `%s` : `%s` on: %s" url error json_str ;
 	  retry exn
     with 
@@ -117,8 +117,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 	match cached with None | Some None -> None, None | Some (Some cached) ->
 	  let rev = cached.ImplCache.rev in
 	  let ct = 
-	    try let obj = Json_type.Browse.objekt cached.ImplCache.json in    
-		Some (List.assoc "ct" obj)
+	    try Some (Json.to_object (fun ~opt ~req -> req "ct") cached.ImplCache.json)
 	    with _ -> None
 	  in 
 	  rev, ct
@@ -127,7 +126,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
       (* Keep "ut" and "ct" timers on every object for debugging *)
       Run.context |> Run.bind begin fun ctx ->
 
-	let update_time = Json_type.String (Util.string_of_time (ctx # time)) in
+	let update_time = Json.String (Util.string_of_time (ctx # time)) in
 	let create_time = BatOption.default update_time ct in
 
 	(* The JSON to be written to the database. *)
@@ -137,22 +136,20 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 	  |> json_replace "ut" update_time
 	  |> (match rev with 
 	    | None -> identity 
-	    | Some rev -> json_replace "_rev" (Json_type.Build.string rev))
+	    | Some rev -> json_replace "_rev" (Json.String rev))
 	  |> json_replace "_id" (Id.to_json id) 
 	in
 
 	(* Send the new document to the database now. *)
     
-	let json_str = Json_io.string_of_json ~compact:true ~recursive:true json in
+	let json_str = Json.to_string json in
 
 	let rec retry retries = 
 	  try Util.logreq "PUT %s %s" url json_str ;
 	      let response = Http_client.Convenience.http_put url json_str in
 	      try let rev = 
-		    Json_io.json_of_string ~recursive:true response
-                    |> Json_type.Browse.objekt
-  		    |> List.assoc "rev"
-		    |> Json_type.Browse.string
+		    Json.of_string response
+                    |> Json.to_object (fun ~opt ~req -> Json.to_string (req "rev"))
 		  in Run.return (`ok (Some rev))
 	      with _ -> Run.return (`ok None)
 	  with 

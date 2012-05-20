@@ -1,4 +1,4 @@
-OCAMLBUILD=ocamlbuild -X p4 -use-ocamlfind
+OCAMLBUILD=ocamlbuild -X p4 -use-ocamlfind 
 
 all: 
 	make -C ../p4 ../pp.cmo

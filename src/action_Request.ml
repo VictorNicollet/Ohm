@@ -9,7 +9,7 @@ class type ['server,'args] request = object
   method self   : ('server,'args) Action_Endpoint.endpoint
   method server : 'server
   method path   : string
-  method post   : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option
+  method post   : [ `JSON of Json.t | `POST of (string,string) BatPMap.t ] option
   method get    : string -> string option 
   method args   : 'args
   method cookie : string -> string option          
@@ -46,9 +46,9 @@ class ['server,'args] fcgi_request
 		   (try
 		      let field = (cgi # argument "BODY") # value in
 		      match utf8 field with
-			| Some field -> Json_io.json_of_string ~recursive:true field
-			| None       -> Json_type.Null
-		    with _ -> Json_type.Null))
+			| Some field -> Json.of_string field
+			| None       -> Json.Null
+		    with _ -> Json.Null))
 	else 
 	  Some (`POST 
 		   (List.fold_left begin fun acc arg ->

@@ -29,7 +29,7 @@ let script_of_call call =
   call.name 
   ^ "(" 
   ^ String.concat ", " 
-    (List.map (Json_io.string_of_json ~recursive:true ~compact:true) call.args)
+    (List.map Json.to_string call.args)
   ^ ")"
     
 let to_script t =
@@ -41,7 +41,7 @@ let event_of_call call =
   call.name 
   ^ ".call(" 
   ^ String.concat ", " 
-    ("this" :: List.map (Json_io.string_of_json ~recursive:true ~compact:true) call.args)
+    ("this" :: List.map Json.to_string call.args)
   ^ ")"
 
 let to_event t = 
@@ -50,8 +50,8 @@ let to_event t =
   |> String.concat " ; "
 
 let to_json tree = 
-  Json_type.Build.list begin fun call ->
-    Json_type.Build.array ( Json_type.Build.string call.name :: call.args )
+  Json.of_list begin fun call ->
+    Json.Array ( Json.String call.name :: call.args )
   end (list_of_tree tree)
 	
 	     

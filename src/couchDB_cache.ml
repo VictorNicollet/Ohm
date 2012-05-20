@@ -49,7 +49,7 @@ module IdSet      = Set.Make(Id)
    of the database contents, although possibly outdated ! 
 *)
 type cached = {
-  json  : Json_type.t ;
+  json  : Json.t ;
   rev   : string option ;
   parse : ImplParser.cache
 }
@@ -76,9 +76,7 @@ end
    data back). *)
 let cached_of_json json = 
   let rev = 
-    try Some (Json_type.Browse.objekt json 
-		 |> List.assoc "_rev"
-		 |> Json_type.Browse.string)
+    try Some (Json.to_object (fun ~opt ~req -> Json.to_string (req "_rev")) json)
     with _ -> None
   in
   { json = json ; rev = rev ; parse = ImplParser.cache () } 
@@ -112,10 +110,10 @@ let fetch database =
 	    let url = CacheKey.url key in 
 	    Util.logreq "GET %s" url ;
 	    try let result = Http_client.Convenience.http_get url in
-		try let json   = Json_io.json_of_string ~recursive:true result in
+		try let json   = Json.of_string result in
 		    cache_values [key, Some (cached_of_json json)]		
 		with 	
-		  | Json_type.Json_error error ->
+		  | Json.Error error ->
 		    Util.log "CouchDB.get: `%s` : %s on: %s" url error result ; 
 		    couchDB.loading <- LoadSet.empty ;
 		    Run.return ()
@@ -131,8 +129,8 @@ let fetch database =
 		Run.return ()
 	  end 
 	  | keys -> begin 
-	    let keys_str = Json_io.string_of_json ~recursive:true ~compact:true 
-	      (Json_type.Build.list
+	    let keys_str = Json.to_string 
+	      (Json.of_list
 		 (fun key -> Id.to_json key.CacheKey.id) keys) in
 	    let url = String.concat "" 
 	      [ database.ImplDB.db_prefix ; "_all_docs?" ; 
@@ -140,14 +138,13 @@ let fetch database =
 		  "include_docs", "true" ; "keys", keys_str ] ] in
 	    Util.logreq "GET %s" url ;
 	    try let result = Http_client.Convenience.http_get url in
-		try let list   = Json_io.json_of_string ~recursive:true result
-		      |> Json_type.Browse.objekt
-		      |> List.assoc "rows"
-		      |> Json_type.Browse.array in
+		try let list   = Json.of_string result 
+		      |> Json.to_object (fun ~opt ~req -> req "rows")
+		      |> Json.to_array in
 		    let docs   = BatList.filter_map begin fun json -> 
-		      try let fields = Json_type.Browse.objekt json in 
-			  let id     = Id.of_json (List.assoc "id" fields) in
-			  Some (id, List.assoc "doc" fields)
+		      try
+			Json.to_object (fun ~opt ~req -> 
+			  Some (Id.of_json (req "id"), req "doc")) json
 		      with _ -> None 
 		    end list in   
 		    let values = List.map 
@@ -161,7 +158,7 @@ let fetch database =
 		    Util.log "CouchDB.get: `%s` : 'rows' missing on: %s" url result ; 
 		    couchDB.loading <- LoadSet.empty ;
 		    Run.return () 
-		  | Json_type.Json_error error ->
+		  | Json.Error error ->
 		    Util.log "CouchDB.get: `%s` : %s on: %s" url error result ; 
 		    couchDB.loading <- LoadSet.empty ;
 		    Run.return ()

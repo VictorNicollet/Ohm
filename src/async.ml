@@ -21,13 +21,10 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 
   let log fmt = Util.log fmt
 
-  module Float = Fmt.Float
-  module Json  = Fmt.Json
-
   module Task = struct
     module T = struct
       type json t = {
-	time    "t" : Float.t ;
+	time    "t" : float ;
 	name    "n" : string ;
 	calls   "c" : int ;
 	args    "a" : Json.t 
@@ -90,7 +87,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
     return ()
 
   module TaskView = CouchDB.DocView(struct
-    module Key    = Float
+    module Key    = Fmt.Float
     module Value  = Fmt.Unit
     module Doc    = Task
     module Design = Design

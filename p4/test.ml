@@ -13,19 +13,4 @@ module Json = struct
   exception Error of string
 end
 
-module A = struct
-  module B = struct
-    type json t = int
-    let to_json = json_of_t
-    let of_json = t_of_json 
-  end
-end
-
-type json t = { 
-  ab : A.B.t ;
-  a : int ; 
-  ?b : string option ;
-  ?c : int = (3+3)
-}
-
-
+type json t = (A.t)
