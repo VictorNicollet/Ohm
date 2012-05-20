@@ -829,7 +829,7 @@ EXTEND Gram
       | LIDENT "bool"   -> (_loc,`bool) 
       | LIDENT "float"  -> (_loc,`float) 
       | LIDENT "int"    -> (_loc,`int)
-      | LIDENT "unit"   -> (_loc,`int)
+      | LIDENT "unit"   -> (_loc,`unit)
 	
       | t = typexpr ; LIDENT "option" -> (_loc, `option t) 
       | t = typexpr ; LIDENT "list"   -> (_loc, `list t) 
