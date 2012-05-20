@@ -525,7 +525,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	<:expr< [ $t$ :: $acc$ ] >>
       end l <:expr< [] >> in
       let bind = <:binding< ($tup:patt$) = $src$ >> in
-      <:expr< let $bind$ in $list$ >> 
+      <:expr< let $bind$ in Json.Array $list$ >> 
     end 
 
     | `variant l -> begin 
