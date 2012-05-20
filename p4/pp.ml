@@ -294,14 +294,14 @@ let generate_t_of_json _loc (def:typexpr) =
 
     | `list t -> begin
       let r = recurse <:expr< _t_ >> t in
-      let list = <:match_case< Json.List _l_ -> List.map (fun _t_ -> $r$) _l_ >> in
+      let list = <:match_case< Json.Array _l_ -> List.map (fun _t_ -> $r$) _l_ >> in
       let fail = <:match_case< _ -> $error "list" src$ >> in
       <:expr< match $src$ with [ $list$ | $fail$ ] >>
     end 
 
     | `array t -> begin
       let r = recurse <:expr< _t_ >> t in
-      let list = <:match_case< Json.List _l_ -> Array.of_list (List.map (fun _t_ -> $r$) _l_) >> in
+      let list = <:match_case< Json.Array _l_ -> Array.of_list (List.map (fun _t_ -> $r$) _l_) >> in
       let fail = <:match_case< _ -> $error "list" src$ >> in
       <:expr< match $src$ with [ $list$ | $fail$ ] >>
     end 
@@ -328,7 +328,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	let id = <:patt< $id:<:ident< $lid:"_t_" ^ string_of_int i $ >>$ >> in
 	<:patt< [ $id$ :: $acc$ ] >> 
       end l <:patt< [] >> in
-      let patt = <:patt< Json.List $patt$ >> in
+      let patt = <:patt< Json.Array $patt$ >> in
       let expr = List.fold_right begin fun (i,t) acc -> 
 	let id = <:expr< $lid:"_t_" ^ string_of_int i $ >> in
 	let t  = recurse id t in
@@ -352,7 +352,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< [ $id:id$ :: $acc$ ] >> 
 	    end l <:patt< [] >> in
-	    let patt = <:patt< Json.List [ $p$ :: $patt$ ] >> in
+	    let patt = <:patt< Json.Array [ $p$ :: $patt$ ] >> in
 	    let list = List.fold_left begin fun acc (i,t) -> 
 	      let id = <:expr< $lid: "_t_" ^ string_of_int i $ >> in
 	      let t = recurse id t in
@@ -375,7 +375,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	  | [] -> let e = <:expr< ` $ident (v#name)$ >> in
 		  <:match_case< $p$ -> $e$ >>
 	  | [t] -> begin
-	    let patt = <:patt< Json.List [ $p$ ; _t_ ] >> in
+	    let patt = <:patt< Json.Array [ $p$ ; _t_ ] >> in
 	    let expr = recurse <:expr< _t_ >> t in
 	    let expr = <:expr< `$ident (v#name)$ $expr$ >> in
 	    <:match_case< $patt$ -> $expr$ >>			    
@@ -386,7 +386,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< [ $id:id$ :: $acc$ ] >> 
 	    end l <:patt< [] >> in
-	    let patt = <:patt< Json.List [ $p$ ; $patt$ ] >> in
+	    let patt = <:patt< Json.Array [ $p$ ; $patt$ ] >> in
 	    let list = List.fold_right begin fun (i,t) acc -> 
 	      let id = <:expr< $lid: "_t_" ^ string_of_int i $ >> in
 	      let t = recurse id t in
@@ -486,14 +486,14 @@ let generate_json_of_t _loc (def:typexpr) =
     | `list t -> begin
       let r = recurse <:expr< _t_ >> t in
       let e_fun = <:expr< fun _t_ -> $r$ >> in
-      <:expr< Json.List (List.map $e_fun$ $src$) >> 
+      <:expr< Json.Array (List.map $e_fun$ $src$) >> 
     end
 
     | `array t -> begin
       let r = recurse <:expr< _t_ >> t in
       let src = <:expr< Array.to_list $src$ >> in
       let e_fun = <:expr< fun _t_ -> $r$ >> in
-      <:expr< Json.List (List.map $e_fun$ $src$) >> 
+      <:expr< Json.Array (List.map $e_fun$ $src$) >> 
     end 
       
     | `param (m,t) -> begin 
@@ -548,7 +548,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	      <:expr< [ $t$ :: $acc$ ] >>
 	    end l <:expr< [] >> in
 	    let e = <:expr< [ $e$ :: $list$ ] >> in
-	    <:match_case< $patt$ -> Json.List $e$ >>			    
+	    <:match_case< $patt$ -> Json.Array $e$ >>			    
 	  end
 	in
 	<:match_case< $m$ | $acc$ >>  		      
@@ -566,7 +566,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	    let patt = <:patt< $uid:ident (v#name)$ _t_ >> in			  
 	    let t = recurse <:expr< _t_ >> t in
 	    let e = <:expr< [ $e$ :: $t$ ] >> in
-	    <:match_case< $patt$ -> Json.List $e$ >>			    
+	    <:match_case< $patt$ -> Json.Array $e$ >>			    
 	  end
 	  | list -> begin
 	    let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
@@ -582,7 +582,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	      <:expr< [ $t$ :: $acc$ ] >>
 	    end l <:expr< [] >> in
 	    let e = <:expr< [ $e$ ; $list$ ] >> in
-	    <:match_case< $patt$ -> Json.List $e$ >>			    
+	    <:match_case< $patt$ -> Json.Array $e$ >>			    
 	  end
 	in
 	<:match_case< $m$ | $acc$ >>  		      
