@@ -87,6 +87,65 @@ let def v = function
 let loc   = fst
 let ident = snd
 
+let expr_tuple _loc l = 
+  let rec aux = function 
+    | [] -> <:expr< >> 
+    | h :: t -> <:expr< $h$, $aux t$ >> 
+  in 
+  <:expr< ( $tup:aux l$ ) >> 
+    
+let patt_tuple _loc l = 
+  let rec aux = function 
+    | [] -> <:patt< >>
+    | h :: t -> <:patt< $h$, $aux t$ >>
+  in
+  <:patt< ( $tup:aux l$ ) >>
+
+let tn _loc i = <:ident< $"_t_" ^string_of_int i$ >>
+
+let error _loc text src = 
+  let s = <:expr< $str:("Expecting " ^ text ^ ", found ")$ ^ Json.to_string $src$ >> in
+  <:expr< raise (Json.Error ($s$)) >>
+
+
+let parse_record src recurse _loc list return = 
+
+  let error = error _loc in
+
+  let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
+  let patt = patt_tuple _loc (List.map (fun (i,_) -> <:patt< $lid:"_t_" ^ string_of_int i$ >>) l) in
+  let set n e = expr_tuple _loc (List.map (fun (i,_) -> if i = n then <:expr< Some $e$ >> else
+      <:expr< $lid:"_t_" ^ string_of_int i$ >>) l) in      
+  let keep = set (-1) <:expr< () >> in
+  
+  let init = expr_tuple _loc (List.map (fun _ -> <:expr< None >>) l) in
+  let test = 
+    let cases = List.fold_left begin fun acc (i,t) -> 
+      let v = recurse <:expr< v >> (t # typ) in
+      let m = <:match_case< $str:snd (t # label)$ -> ( $set i v$ ) >> in
+      <:match_case< $m$ | $acc$ >> 
+    end <:match_case< _ -> ( $keep$ ) >> l in 
+    <:expr< match k with [ $cases$ ] >>
+  in
+  
+  let read = <:expr< List.fold_left (fun $patt$ (k,v) -> $test$) $init$ $src$ >> in
+  
+  let return = return l in
+  
+  let expr = List.fold_left begin fun acc (i,t) -> 
+    let from = <:expr< $lid:"_t_"^string_of_int i$ >> in
+    let patt = <:patt< $lid:"_t_"^string_of_int i$ >> in
+    let none = match t # default with 
+      | None -> error ("field \"" ^ (snd t # label) ^ "\"") src 
+      | Some None -> <:expr< None >> 
+      | Some (Some e) -> e
+    in
+    let expr = <:expr< match $from$ with [ Some _t_ -> _t_ | None -> $none$ ] >> in
+    <:expr< let $patt$ = $expr$ in $acc$ >>
+  end return l in
+  
+  <:expr< let $patt$ = $read$ in $expr$ >> 
+			      
 let unique list = 
   let list = List.map (fun a -> a # label) list in
   let list = List.sort (fun a b -> compare (ident a) (ident b)) list in
@@ -153,6 +212,227 @@ let make_member_bind ~mut ~name ?label ?default typ = object
 
 end
 
+let generate_t_of_json _loc (def:typexpr) = 
+
+  let error = error _loc in
+
+  let str_error src = 
+    let s = <:expr< "Unknown variant label \"" ^ $src$ ^ "\"" >> in
+    <:expr< raise (Json.Error ($s$)) >>
+  in
+
+  let in_module what ((_loc,def):typemod) = 
+    let rec aux = function
+      | [] -> what
+      | h :: t -> let _loc = fst h in
+		  <:ident< $uid:ident h$ . $aux t$ >> 
+    in aux def
+  in
+
+  let strtype src (_loc,def) = match def with 
+
+    | `string -> src
+
+    | `m m -> begin 
+      let f = in_module <:ident< of_string >> m in
+      <:expr< $id:f$ $src$ >>
+    end
+
+    | `poly p -> begin
+      let matches = List.fold_right begin fun v acc -> 
+	let m = <:match_case< $str:snd v#label$ -> `$ident (v#name)$ >> in
+	<:match_case< $m$ | $acc$ >>
+      end p <:match_case< _ -> $str_error src$ >> in
+      <:expr< match $src$ with [ $matches$ ] >>  
+    end
+
+  in
+
+  let rec recurse src ((_loc,def):typexpr) = match def with 
+      
+    | `string -> begin
+      let ok = <:match_case< Json.String _s_ -> _s_ >> in
+      let nok = <:match_case< _ -> $error "string" src$ >> in
+      <:expr< match $src$ with [ $ok$ | $nok$ ] >>
+    end
+
+    | `bool -> begin 
+      let ok = <:match_case< Json.Bool _b_ -> _b_ >> in
+      let nok = <:match_case< _ -> $error "bool" src$ >> in
+      <:expr< match $src$ with [ $ok$ | $nok$ ] >>
+    end
+
+    | `int -> begin 
+      let ok = <:match_case< Json.Int _i_ -> _i_ >> in
+      let nok = <:match_case< _ -> $error "int" src$ >> in
+      <:expr< match $src$ with [ $ok$ | $nok$ ] >>
+    end
+
+    | `float -> begin 
+      let ok = <:match_case< Json.Float _f_ -> _f_ >> in
+      let ok' = <:match_case< Json.Int _i_ -> float_of_int _i_ >> in
+      let nok = <:match_case< _ -> $error "float" src$ >> in
+      <:expr< match $src$ with [ $ok$ | $ok'$ | $nok$ ] >>
+    end
+
+    | `unit -> <:expr< () >>
+
+    | `m m -> begin
+      let f = in_module <:ident< of_json >> m in
+      <:expr< $id:f$ $src$ >>
+    end
+
+    | `option t -> begin
+      let r = recurse <:expr< _t_ >> t in
+      let none = <:match_case< Json.Null -> None >> in
+      let some = <:match_case< _t_ -> Some $r$ >> in
+      <:expr< match $src$ with [ $none$ | $some$ ] >> 
+    end 
+
+    | `list t -> begin
+      let r = recurse <:expr< _t_ >> t in
+      let list = <:match_case< Json.List _l_ -> List.map (fun _t_ -> $r$) _l_ >> in
+      let fail = <:match_case< _ -> $error "list" src$ >> in
+      <:expr< match $src$ with [ $list$ | $fail$ ] >>
+    end 
+
+    | `array t -> begin
+      let r = recurse <:expr< _t_ >> t in
+      let list = <:match_case< Json.List _l_ -> Array.of_list (List.map (fun _t_ -> $r$) _l_) >> in
+      let fail = <:match_case< _ -> $error "list" src$ >> in
+      <:expr< match $src$ with [ $list$ | $fail$ ] >>
+    end 
+
+    | `param (m,t) -> begin
+      let r = recurse <:expr< _t_ >> t in
+      let r_fun = <:expr< fun _t_ -> $r$ >> in
+      let f = in_module <:ident< of_json >> m in
+      <:expr< $id:f$ $r_fun$ $src$ >>
+    end
+
+    | `param2 (m,s,t) -> begin
+      let t = recurse <:expr< _t_ >> t in
+      let t_fun = <:expr< fun _t_ -> $t$ >> in
+      let s = strtype <:expr< _t_ >> s in
+      let s_fun = <:expr< fun _t_ -> $s$ >> in
+      let f = in_module <:ident< of_json >> m in
+      <:expr< $id:f$ $s_fun$ $t_fun$ $src$ >> 
+    end
+
+    | `tuple l -> begin 
+      let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) l (0,[]) in
+      let patt = List.fold_right begin fun (i,_) acc -> 
+	let id = <:patt< $id:<:ident< $lid:"_t_" ^ string_of_int i $ >>$ >> in
+	<:patt< [ $id$ :: $acc$ ] >> 
+      end l <:patt< [] >> in
+      let patt = <:patt< Json.List $patt$ >> in
+      let expr = List.fold_right begin fun (i,t) acc -> 
+	let id = <:expr< $lid:"_t_" ^ string_of_int i $ >> in
+	let t  = recurse id t in
+	<:expr< $t$, $acc$ >>
+      end l <:expr< >> in
+      let ok = <:match_case< $patt$ -> ($expr$) >> in
+      let nok = <:match_case< _ -> $error "tuple" src$ >> in
+      <:expr< match $src$ with [ $ok$ | $nok$ ] >>
+    end
+
+    | `variant l -> begin
+
+      let matches = List.fold_right begin fun v acc -> 
+        let p = <:patt< $str:snd v#label$ >> in
+	let p = <:patt< Json.String $p$ >> in
+        let m = match v # typ with 
+	  | [] -> <:match_case< $p$ -> $uid:ident (v#name)$ >>
+	  | list -> begin
+	    let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
+	    let patt = List.fold_right begin fun (i,_) acc -> 
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
+	      <:patt< [ $id:id$ :: $acc$ ] >> 
+	    end l <:patt< [] >> in
+	    let patt = <:patt< Json.List [ $p$ :: $patt$ ] >> in
+	    let list = List.fold_left begin fun acc (i,t) -> 
+	      let id = <:expr< $lid: "_t_" ^ string_of_int i $ >> in
+	      let t = recurse id t in
+	      <:expr< $acc$ $t$ >>
+	    end <:expr< $uid:ident (v#name)$ >> l in
+	    <:match_case< $patt$ -> $list$ >>			    
+	  end
+	in
+	<:match_case< $m$ | $acc$ >>  		      
+      end l <:match_case< _ -> $error "variant" src$ >> in
+      <:expr< match $src$ with [ $matches$ ] >> 
+    end 
+
+    | `poly l -> begin
+
+      let matches = List.fold_right begin fun v acc -> 
+        let p = <:patt< $str:snd v#label$ >> in
+	let p = <:patt< Json.String $p$ >> in
+        let m = match v # typ with 
+	  | [] -> let e = <:expr< ` $ident (v#name)$ >> in
+		  <:match_case< $p$ -> $e$ >>
+	  | [t] -> begin
+	    let patt = <:patt< Json.List [ $p$ ; _t_ ] >> in
+	    let expr = recurse <:expr< _t_ >> t in
+	    let expr = <:expr< `$ident (v#name)$ $expr$ >> in
+	    <:match_case< $patt$ -> $expr$ >>			    
+	  end
+	  | list -> begin
+	    let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
+	    let patt = List.fold_right begin fun (i,_) acc -> 
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
+	      <:patt< [ $id:id$ :: $acc$ ] >> 
+	    end l <:patt< [] >> in
+	    let patt = <:patt< Json.List [ $p$ ; $patt$ ] >> in
+	    let list = List.fold_right begin fun (i,t) acc -> 
+	      let id = <:expr< $lid: "_t_" ^ string_of_int i $ >> in
+	      let t = recurse id t in
+	      <:expr< $t$, $acc$ >>
+	    end l <:expr<  >> in
+	    let expr = <:expr< `$ident (v#name)$ ( $list$ ) >> in
+	    <:match_case< $patt$ -> $expr$ >>			    
+	  end 
+	in
+	<:match_case< $m$ | $acc$ >>  		      
+      end l <:match_case< _ -> $error "variant" src$ >> in
+      <:expr< match $src$ with [ $matches$ ] >> 
+    end 
+
+
+    | `record r -> begin
+      parse_record src recurse _loc r begin fun l -> 
+	let fields = List.fold_left begin fun acc (i,t) ->
+	  let bind = <:rec_binding< $lid:ident (t # name)$ = $lid:"_t_" ^ string_of_int i$>> in
+	  <:rec_binding< $acc$ ; $bind$ >>
+	end <:rec_binding< >> l in	 
+	<:expr< { $fields$ } >> 
+      end
+    end
+	
+    | `obj o -> begin 
+      parse_record src recurse _loc o begin fun l ->
+	let fields = List.fold_left begin fun acc (i,t) -> 
+	  let name = ident (t # name) in
+	  let vbind = <:class_str_item< value $name$ = $lid:"_t_" ^string_of_int i$>> in
+	  let mbind = <:class_str_item< method $lid:name$ = $lid:name$ >> in
+	  <:class_str_item< $vbind$ ; $mbind$ ; $acc$ >>
+	end <:class_str_item< >> l in 
+	<:expr< object $fields$ end >> 
+      end
+    end
+	
+  in
+
+  let b = 
+    let e = recurse <:expr< _t_ >> def in
+    let f = <:expr< fun _t_ -> $e$ >> in
+    let b = <:ident< t_of_json >> in
+    let p = <:patt< $id:b$ >> in
+    <:binding< $p$ = $f$ >> 
+  in
+
+  <:str_item< value $b$ >> 
+
 let generate_json_of_t _loc (def:typexpr) = 
 
   let in_module what ((_loc,def):typemod) = 
@@ -193,38 +473,38 @@ let generate_json_of_t _loc (def:typexpr) =
     end
       
     | `option t -> begin 
-      let r = recurse <:expr< t >> t in
+      let r = recurse <:expr< _t_ >> t in
       let m_none = <:match_case< None   -> Json.Null >> in
-      let m_some = <:match_case< Some t -> $r$ >> in  
+      let m_some = <:match_case< Some _t_ -> $r$ >> in  
       let m = <:match_case< $m_none$ | $m_some$ >> in
       <:expr< match $src$ with [ $m$ ] >>
     end
       
     | `list t -> begin
-      let r = recurse <:expr< t >> t in
-      let e_fun = <:expr< fun t -> $r$ >> in
-      <:expr< List.map $e_fun$ $src$ >> 
+      let r = recurse <:expr< _t_ >> t in
+      let e_fun = <:expr< fun _t_ -> $r$ >> in
+      <:expr< Json.List (List.map $e_fun$ $src$) >> 
     end
 
     | `array t -> begin
-      let r = recurse <:expr< t >> t in
+      let r = recurse <:expr< _t_ >> t in
       let src = <:expr< Array.to_list $src$ >> in
-      let e_fun = <:expr< fun t -> $r$ >> in
-      <:expr< List.map $e_fun$ $src$ >> 
+      let e_fun = <:expr< fun _t_ -> $r$ >> in
+      <:expr< Json.List (List.map $e_fun$ $src$) >> 
     end 
       
     | `param (m,t) -> begin 
-      let r = recurse <:expr< t >> t in
-      let e_fun = <:expr< fun t -> $r$ >> in
+      let r = recurse <:expr< _t_ >> t in
+      let e_fun = <:expr< fun _t_ -> $r$ >> in
       let f = in_module <:ident< to_json >> m in
       <:expr< $id:f$ $e_fun$ $src$ >>
     end 
       
     | `param2 (m,s,t) -> begin 
-      let t = recurse <:expr< t >> t in
-      let t_fun = <:expr< fun t -> $t$ >> in
-      let s = strtype <:expr< t >> s in
-      let s_fun = <:expr< fun t -> $s$ >> in
+      let t = recurse <:expr< _t_ >> t in
+      let t_fun = <:expr< fun _t_ -> $t$ >> in
+      let s = strtype <:expr< _t_ >> s in
+      let s_fun = <:expr< fun _t_ -> $s$ >> in
       let f = in_module <:ident< to_json >> m in
       <:expr< $id:f$ $s_fun$ $t_fun$ $src$ >>
     end 
@@ -232,11 +512,11 @@ let generate_json_of_t _loc (def:typexpr) =
     | `tuple l -> begin
       let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) l (0,[]) in
       let patt = List.fold_right begin fun (i,_) acc -> 
-	let id = <:patt< $id:<:ident< $lid:"t" ^ string_of_int i $ >>$ >> in
+	let id = <:patt< $id:<:ident< $lid:"_t_" ^ string_of_int i $ >>$ >> in
 	 <:patt< $id$ , $acc$ >> 
       end l <:patt< >> in
       let list = List.fold_right begin fun (i,t) acc -> 
-	let id = <:ident< $lid:"t" ^ string_of_int i $ >> in
+	let id = <:ident< $lid:"_t_" ^ string_of_int i $ >> in
 	let id = <:expr< $id:id$ >> in
 	let t = recurse id t in
 	<:expr< [ $t$ :: $acc$ ] >>
@@ -254,18 +534,18 @@ let generate_json_of_t _loc (def:typexpr) =
 	  | list -> begin
 	    let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
 	    let patt = List.fold_right begin fun (i,_) acc -> 
-	      let id = <:ident< $lid: "t" ^ string_of_int i $ >> in
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< $id:id$ , $acc$ >> 
 	    end l <:patt< >> in
 	    let patt = <:patt< $uid:ident (v#name)$ $patt$ >> in			  
 	    let list = List.fold_right begin fun (i,t) acc -> 
-	      let id = <:ident< $lid: "t" ^ string_of_int i $ >> in
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      let id = <:expr< $id:id$ >> in
 	      let t = recurse id t in
 	      <:expr< [ $t$ :: $acc$ ] >>
 	    end l <:expr< [] >> in
 	    let e = <:expr< [ $e$ :: $list$ ] >> in
-	    <:match_case< $patt$ -> $e$ >>			    
+	    <:match_case< $patt$ -> Json.List $e$ >>			    
 	  end
 	in
 	<:match_case< $m$ | $acc$ >>  		      
@@ -279,21 +559,27 @@ let generate_json_of_t _loc (def:typexpr) =
 	let e = <:expr< Json.String $e$ >> in
         let m = match v # typ with 
 	  | [] -> <:match_case< `$ident (v#name)$ -> $e$ >>
+	  | [t] -> begin
+	    let patt = <:patt< $uid:ident (v#name)$ _t_ >> in			  
+	    let t = recurse <:expr< _t_ >> t in
+	    let e = <:expr< [ $e$ :: $t$ ] >> in
+	    <:match_case< $patt$ -> Json.List $e$ >>			    
+	  end
 	  | list -> begin
 	    let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
 	    let patt = List.fold_right begin fun (i,_) acc -> 
-	      let id = <:ident< $lid: "t" ^ string_of_int i $ >> in
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< $id:id$ , $acc$ >> 
 	    end l <:patt< >> in
 	    let patt = <:patt< $uid:ident (v#name)$ $patt$ >> in			  
 	    let list = List.fold_right begin fun (i,t) acc -> 
-	      let id = <:ident< $lid: "t" ^ string_of_int i $ >> in
+	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      let id = <:expr< $id:id$ >> in
 	      let t = recurse id t in
 	      <:expr< [ $t$ :: $acc$ ] >>
 	    end l <:expr< [] >> in
 	    let e = <:expr< [ $e$ ; $list$ ] >> in
-	    <:match_case< $patt$ -> $e$ >>			    
+	    <:match_case< $patt$ -> Json.List $e$ >>			    
 	  end
 	in
 	<:match_case< $m$ | $acc$ >>  		      
@@ -333,8 +619,8 @@ let generate_json_of_t _loc (def:typexpr) =
   in
 
   let b = 
-    let e = recurse <:expr< t >> def in
-    let f = <:expr< fun t -> $e$ >> in
+    let e = recurse <:expr< _t_ >> def in
+    let f = <:expr< fun _t_ -> $e$ >> in
     let b = <:ident< json_of_t >> in
     let p = <:patt< $id:b$ >> in
     <:binding< $p$ = $f$ >> 
@@ -456,7 +742,8 @@ let generate_type _loc (def:typexpr) =
 let generate _loc def = 
   let typedef = generate_type _loc def in
   let to_json = generate_json_of_t _loc def in
-  <:str_item< $typedef$ ; $to_json$ >>
+  let of_json = generate_t_of_json _loc def in
+  <:str_item< $typedef$ ; $to_json$ ; $of_json$ >>
 
 EXTEND Gram 
   GLOBAL: str_item ;
