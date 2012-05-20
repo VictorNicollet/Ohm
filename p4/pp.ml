@@ -87,20 +87,6 @@ let def v = function
 let loc   = fst
 let ident = snd
 
-let expr_tuple _loc l = 
-  let rec aux = function 
-    | [] -> <:expr< >> 
-    | h :: t -> <:expr< $h$, $aux t$ >> 
-  in 
-  <:expr< ( $tup:aux l$ ) >> 
-    
-let patt_tuple _loc l = 
-  let rec aux = function 
-    | [] -> <:patt< >>
-    | h :: t -> <:patt< $h$, $aux t$ >>
-  in
-  <:patt< ( $tup:aux l$ ) >>
-
 let tn _loc i = <:ident< $"_t_" ^string_of_int i$ >>
 
 let error _loc text src = 
@@ -113,27 +99,24 @@ let parse_record src recurse _loc list return =
   let error = error _loc in
 
   let _, l = List.fold_right (fun t (n,acc) -> succ n, (n,t) :: acc) list (0,[]) in
-  let patt = patt_tuple _loc (List.map (fun (i,_) -> <:patt< $lid:"_t_" ^ string_of_int i$ >>) l) in
-  let set n e = expr_tuple _loc (List.map (fun (i,_) -> if i = n then <:expr< Some $e$ >> else
-      <:expr< $lid:"_t_" ^ string_of_int i$ >>) l) in      
-  let keep = set (-1) <:expr< () >> in
-  
-  let init = expr_tuple _loc (List.map (fun _ -> <:expr< None >>) l) in
+
+  let set i e = <:expr< $lid:"_t_" ^ string_of_int i$ := Some $e$ >> in
+
   let test = 
     let cases = List.fold_left begin fun acc (i,t) -> 
       let v = recurse <:expr< v >> (t # typ) in
-      let m = <:match_case< $str:snd (t # label)$ -> ( $set i v$ ) >> in
+      let m = <:match_case< $str:snd (t # label)$ -> $set i v$ >> in
       <:match_case< $m$ | $acc$ >> 
-    end <:match_case< _ -> ( $keep$ ) >> l in 
+    end <:match_case< _ -> () >> l in 
     <:expr< match k with [ $cases$ ] >>
   in
   
-  let read = <:expr< List.fold_left (fun $patt$ (k,v) -> $test$) $init$ _l_ >> in
+  let read = <:expr< List.iter (fun (k,v) -> $test$) _l_ >> in
   
   let return = return l in
   
   let expr = List.fold_left begin fun acc (i,t) -> 
-    let from = <:expr< $lid:"_t_"^string_of_int i$ >> in
+    let from = <:expr< ! $lid:"_t_"^string_of_int i$ >> in
     let patt = <:patt< $lid:"_t_"^string_of_int i$ >> in
     let none = match t # default with 
       | None -> error ("field \"" ^ (snd t # label) ^ "\"") src 
@@ -144,7 +127,14 @@ let parse_record src recurse _loc list return =
     <:expr< let $patt$ = $expr$ in $acc$ >>
   end return l in
   
-  let expr = <:expr< let $patt$ = $read$ in $expr$ >> in
+  let expr = <:expr< let () = $read$ in $expr$ >> in
+
+  let expr = List.fold_left begin fun acc (i,t) -> 
+    let patt = <:patt< $lid:"_t_"^string_of_int i$ >> in
+    let expr = <:expr< ref None >> in
+    <:expr< let $patt$ = $expr$ in $acc$ >>
+  end expr l in
+
   let ok   = <:match_case< Json.Object _l_ -> $expr$ >> in
   let nok  = <:match_case< _ -> $error "object" src$ >> in
   <:expr< match $src$ with [ $ok$ | $nok$ ] >>
