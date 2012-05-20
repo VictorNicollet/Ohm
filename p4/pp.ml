@@ -386,7 +386,7 @@ let generate_t_of_json _loc (def:typexpr) =
 	      let id = <:ident< $lid: "_t_" ^ string_of_int i $ >> in
 	      <:patt< [ $id:id$ :: $acc$ ] >> 
 	    end l <:patt< [] >> in
-	    let patt = <:patt< Json.Array [ $p$ ; $patt$ ] >> in
+	    let patt = <:patt< Json.Array [ $p$ ; Json.Array $patt$ ] >> in
 	    let list = List.fold_right begin fun (i,t) acc -> 
 	      let id = <:expr< $lid: "_t_" ^ string_of_int i $ >> in
 	      let t = recurse id t in
@@ -581,7 +581,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	      let t = recurse id t in
 	      <:expr< [ $t$ :: $acc$ ] >>
 	    end l <:expr< [] >> in
-	    let e = <:expr< [ $e$ ; $list$ ] >> in
+	    let e = <:expr< [ $e$ ; Json.Array $list$ ] >> in
 	    <:match_case< $patt$ -> Json.Array $e$ >>			    
 	  end
 	in
