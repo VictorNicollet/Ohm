@@ -565,7 +565,7 @@ let generate_json_of_t _loc (def:typexpr) =
 	  | [t] -> begin
 	    let patt = <:patt< `$ident (v#name)$ _t_ >> in			  
 	    let t = recurse <:expr< _t_ >> t in
-	    let e = <:expr< [ $e$ :: $t$ ] >> in
+	    let e = <:expr< [ $e$ ; $t$ ] >> in
 	    <:match_case< $patt$ -> Json.Array $e$ >>			    
 	  end
 	  | list -> begin
