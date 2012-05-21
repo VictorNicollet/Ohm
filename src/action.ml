@@ -128,7 +128,8 @@ module Convenience = struct
       method domain () = domain
       method port   () = port
       method cookie_domain = cookies
-      method matches pr dom po = 	if po = port && pr = protocol && domain = dom then Some () else None
+      method matches pr dom po = 
+	if po = port && pr = protocol && domain = dom then Some () else None
      end)
 
   let sub_domain_server ?(secure=false) ?port ?cookies suffix = 
