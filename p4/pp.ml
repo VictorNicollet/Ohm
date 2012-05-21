@@ -427,7 +427,7 @@ let generate_t_of_json _loc (def:typexpr) =
     <:binding< $p$ = $f$ >> 
   in
 
-  <:str_item< value $b$ >> 
+  <:str_item< value rec $b$ >> 
 
 let generate_json_of_t _loc (def:typexpr) = 
 
