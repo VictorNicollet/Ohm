@@ -112,7 +112,7 @@ let process suffix (cgi : Netcgi.cgi) response =
 	  try ignore (List.assoc name acc) ; acc with Not_found -> (name,value) :: acc
 	) [] full
         |> Json.of_assoc
-	|> Json.to_string
+	|> Json.serialize
       in
       ignore (out_channel # output json 0 (String.length json)) 
   end 

@@ -14,8 +14,10 @@ exception Error of string
 val to_json : t -> t
 val of_json : t -> t
 
-val of_string : string -> t
-val to_string : t -> string
+val debug : t -> string
+
+val unserialize : string -> t
+val serialize   : t -> string
 
 val of_assoc  : (string * t) list -> t 
 val of_int    : int -> t 

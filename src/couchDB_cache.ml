@@ -110,7 +110,7 @@ let fetch database =
 	    let url = CacheKey.url key in 
 	    Util.logreq "GET %s" url ;
 	    try let result = Http_client.Convenience.http_get url in
-		try let json   = Json.of_string result in
+		try let json   = Json.unserialize result in
 		    cache_values [key, Some (cached_of_json json)]		
 		with 	
 		  | Json.Error error ->
@@ -138,7 +138,7 @@ let fetch database =
 		  "include_docs", "true" ; "keys", keys_str ] ] in
 	    Util.logreq "GET %s" url ;
 	    try let result = Http_client.Convenience.http_get url in
-		try let list   = Json.of_string result 
+		try let list   = Json.unserialize result 
 		      |> Json.to_object (fun ~opt ~req -> req "rows")
 		      |> Json.to_array in
 		    let docs   = BatList.filter_map begin fun json -> 

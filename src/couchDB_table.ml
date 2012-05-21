@@ -46,7 +46,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
       if retries <= 0 then Bad exn else query_all_docs ~retries:(retries-1) start limit in
 
     let key k = 
-      Json.to_string (Json.String k) in
+      Json.serialize (Json.String k) in
 
     let keep = function (x, None) -> None | (x, Some y) -> Some (x,y) in
     let args = BatList.filter_map keep [
@@ -66,7 +66,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
     try Util.logreq "GET %s" url ;
 	let json_str = Http_client.Convenience.http_get url in
 	try let list = 
-	      Json.of_string json_str 
+	      Json.unserialize json_str 
 	      |> Json.to_object (fun ~opt ~req -> Json.to_array (req "rows"))
 	      |> List.map (Json.to_object (fun ~opt ~req -> Id.of_json (req "id")))
 	    in 
@@ -142,13 +142,13 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 
 	(* Send the new document to the database now. *)
     
-	let json_str = Json.to_string json in
+	let json_str = Json.serialize json in
 
 	let rec retry retries = 
 	  try Util.logreq "PUT %s %s" url json_str ;
 	      let response = Http_client.Convenience.http_put url json_str in
 	      try let rev = 
-		    Json.of_string response
+		    Json.unserialize response
                     |> Json.to_object (fun ~opt ~req -> Json.to_string (req "rev"))
 		  in Run.return (`ok (Some rev))
 	      with _ -> Run.return (`ok None)

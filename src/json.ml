@@ -16,7 +16,7 @@ exception Error = Json_type.Error
 let of_json x = x
 let to_json x = x
 
-let of_string string =
+let unserialize string =
   let lexbuf = Lexing.from_string string in
     try Json_lex.value lexbuf
     with _ -> let s = String.sub
@@ -26,7 +26,18 @@ let of_string string =
 	      in
 	      raise (Json_lex.unexpected s)
 
-let to_string json =
+let rec debug = function
+  | Null  -> "Null"
+  | Int i -> "Int " ^ string_of_int i 
+  | Float f -> "Float " ^ string_of_float f
+  | String s -> "String " ^ Printf.sprintf "%S" s
+  | Bool true -> "Bool true"
+  | Bool false -> "Bool false"
+  | Array l -> "Array [ " ^ String.concat " ; " (List.map debug l) ^ " ]"
+  | Object o -> "Object [ " ^ String.concat " ; " 
+    (List.map (fun (k,v) -> Printf.sprintf "%S, %s" k (debug v)) o) ^ " ]"
+
+let serialize json =
   let buffer = Buffer.create 1024 in
   let rec value = function
     | Json_type.String s   -> string s
@@ -106,7 +117,7 @@ let of_opt    f x    = BatOption.default Null (BatOption.map f x)
 let of_list   f list = Array (List.map f list) 
 
 let parse_error what json = 
-  let string = to_string json in 
+  let string = serialize json in 
   raise (Error (Printf.sprintf "Expected %s, found `%s`" what string))  
 
 let to_object f = function

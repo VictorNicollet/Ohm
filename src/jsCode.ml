@@ -29,7 +29,7 @@ let script_of_call call =
   call.name 
   ^ "(" 
   ^ String.concat ", " 
-    (List.map Json.to_string call.args)
+    (List.map Json.serialize call.args)
   ^ ")"
     
 let to_script t =
@@ -41,7 +41,7 @@ let event_of_call call =
   call.name 
   ^ ".call(" 
   ^ String.concat ", " 
-    ("this" :: List.map Json.to_string call.args)
+    ("this" :: List.map Json.serialize call.args)
   ^ ")"
 
 let to_event t = 

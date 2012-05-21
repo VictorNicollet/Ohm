@@ -80,7 +80,7 @@ module Views = struct
 		| Some rev -> ( "_rev" , rev ) :: put
 	    in
 	    let json = Json.Object put in
-	    let json_str = Json.to_string json in
+	    let json_str = Json.serialize json in
 	    Util.logreq "PUT %s %s" url json_str ;
 	    let response = Http_client.Convenience.http_put url json_str in
 	    ignore response
@@ -91,7 +91,7 @@ module Views = struct
 	    Util.logreq "GET %s" url ;
 	    let response = Http_client.Convenience.http_get url in
 	    let rev = 
-	      Json.of_string response
+	      Json.unserialize response
               |> Json.to_object (fun ~opt ~req -> req "_rev")
 	    in aux (Some rev)
       in
@@ -124,7 +124,7 @@ let view_query_url
     ?(group=false)
     () =
 
-  let key k = Json.to_string (keyfmt k) in
+  let key k = Json.serialize (keyfmt k) in
   let keep = function (x, None) -> None | (x, Some y) -> Some (x,y) in
   let args = BatList.filter_map keep [
     "include_docs",  (if include_docs then Some "true" else None) ;
@@ -160,7 +160,7 @@ let rec process_view_results ?(retries=5) url =
   try Util.logreq "GET %s" url ;
       let json_str = Http_client.Convenience.http_get url in
       try Run.return begin 
-	    Json.of_string json_str 
+	    Json.unserialize json_str 
             |> Json.to_object (fun ~opt ~req -> Json.to_array (req "rows"))
           end
       with Json.Error error as exn ->

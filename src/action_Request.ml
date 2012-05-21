@@ -46,7 +46,7 @@ class ['server,'args] fcgi_request
 		   (try
 		      let field = (cgi # argument "BODY") # value in
 		      match utf8 field with
-			| Some field -> Json.of_string field
+			| Some field -> Json.unserialize field
 			| None       -> Json.Null
 		    with _ -> Json.Null))
 	else 

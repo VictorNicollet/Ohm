@@ -144,7 +144,7 @@ let logreq =
   else function format -> Printf.ksprintf ignore format
 	
 let logjson js = 
-  Json.to_string js
+  Json.serialize js
   
 let _uniq_b = ref 0
 let _uniq_c = Unix.getpid ()

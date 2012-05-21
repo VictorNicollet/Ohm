@@ -55,11 +55,11 @@ end) -> struct
   let of_json_safe = protect of_json
 
   let of_json_string_safe str = 
-    try of_json_safe (Json.of_string str)
+    try of_json_safe (Json.unserialize str)
     with _ -> None
   
   let to_json_string t = 
-    Json.to_string (to_json t)
+    Json.serialize (to_json t)
             
   let fmt     = { to_json = to_json ; of_json = of_json_safe }
 
@@ -75,7 +75,7 @@ end) -> struct
   let of_json_safe = protect of_json
 
   let of_json_string_safe str = 
-    try of_json_safe (Json.of_string str)
+    try of_json_safe (Json.unserialize str)
     with _ -> None
   
 end
