@@ -14,8 +14,10 @@ let extract_strings streams =
       let current, stream = SyntaxAsset.extract_strings current stream in 
       (current, (asset,stream) :: out))
     streams (SyntaxAsset.({
-      html = "" ;
-      css  = Buffer.create 16
+      html   = "" ;
+      coffee = Buffer.create 16 ; 
+      id     = 1 ;
+      css    = Buffer.create 16
     }),[])
   
 let extract_assets streams = 
@@ -71,6 +73,8 @@ let generate_asset revpath asset =
 
   let root : SyntaxAsset.cell_root = SyntaxAsset.extract_roots asset in 
 
+  let formats = SyntaxAsset.formats root in 
+
   let the_struct = 
     
     let print_cell = function 
@@ -79,6 +83,13 @@ let generate_asset revpath asset =
       | `String (start,length) -> Some (
 	`Stmt (!! "Buffer.add_substring _html.Ohm.Html.html _source %d %d ;"
 		  start length))
+      | `Script (s,t) -> Some (
+	let args = String.concat ";" begin List.map (fun (_,name,_,(_,serialize)) ->
+	  let what = if name = "this" then "_data" else !! "(_data # %s)" name in
+	  serialize what
+	) t 
+	end in 
+	`Stmt (!! "Ohm.Html.run (Ohm.JsCode.make ~name:%S ~args:[%s]) _html ;" s args))
     in
 
     let rec print_root = function 
@@ -168,6 +179,7 @@ let generate_asset revpath asset =
       :: ( `Stmt "open BatPervasives" ) 
       :: ( `Stmt "let _source = AssetData.source" )
       :: ( `Stmt "let bind = Ohm.Universal.bind" )
+      :: ( `Stmt (String.concat "\n" formats)) 
       :: ( `Stmt "let render _data =" )
       :: [ `Indent (print_root root) ]
     in

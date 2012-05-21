@@ -19,6 +19,41 @@ let genuid =
   let n = ref 0 in
   fun () -> incr n ; !n
 
+let type_fmt = function 
+  | "html"        -> None, !! "Ohm.Html.to_json %s"
+  | "json"        -> None, identity
+  | "int"         -> None, !! "Ohm.Json.Int    %s"
+  | "string"      -> None, !! "Ohm.Json.String %s"
+  | "float"       -> None, !! "Ohm.Json.Float  %s"
+  | "bool"        -> None, !! "Ohm.Json.Float  %s"
+  | "int list"    -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.Int _x) %s)"
+  | "string list" -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.String _x) %s)"
+  | "float list"  -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.Float _x) %s)" 
+  | "bool list"   -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.Bool _x) %s)" 
+  | other         -> let name = !! "F%d" (genuid ()) in
+		     let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  open Ohm\n  type json t = (%s)\nend)"
+		       name other 
+		     in
+		     Some fmt, !! "%s.to_json %s" name
+
+type typ = bool * string * string * (string option * (string -> string)) 
+
+let parse_types types = 
+  let types = BatString.nsplit types "," in
+  BatList.filter_map begin fun t -> 
+    try let param, typ = BatString.split t ":" in
+	let param = BatString.trim param in
+	let typ   = BatString.trim typ in
+	let opt, param = 
+	  if param.[0] = '?' then 
+	    true, BatString.trim (String.sub param 1 (String.length param - 1))
+	  else
+	    false, param
+	in
+	Some (opt, param, typ, type_fmt typ)
+    with _ -> None
+  end types
+  
 let extract_types coffee = 
 
   (* Extract all the type definition lines from the source *)
@@ -34,44 +69,12 @@ let extract_types coffee =
       | Some (str,pos) -> all (str :: acc) pos
   in
 
-  (* Generate the source code *)
-  let type_fmt = function 
-    | "html"        -> None, !! "Ohm.Html.to_json %s"
-    | "json"        -> None, identity
-    | "int"         -> None, !! "Json.Int    %s"
-    | "string"      -> None, !! "Json.String %s"
-    | "float"       -> None, !! "Json.Float  %s"
-    | "bool"        -> None, !! "Json.Float  %s"
-    | "int list"    -> None, !! "Json.Array (List.map (fun _x -> Json.Int _x) %s)"
-    | "string list" -> None, !! "Json.Array (List.map (fun _x -> Json.String _x) %s)"
-    | "float list"  -> None, !! "Json.Array (List.map (fun _x -> Json.Float _x) %s)" 
-    | "bool list"   -> None, !! "Json.Array (List.map (fun _x -> Json.Bool _x) %s)" 
-    | other         -> let name = !! "F%d" (genuid ()) in
-		       let fmt  = !! "module %s = Ohm.Fmt.Make(struct\n  type json t = (%s)\nend)"
-			 name other 
-		       in
-		       Some fmt, !! "%s.to_json %s" name
-  in
-
   (* Extract the function and parameter list from a regular expression *)
   let extract definition = 
     if Str.string_match func_regexp definition 0 then 
       let name  = Str.matched_group 1 definition in
-      let types = Str.matched_group 2 definition in
-      let types = BatString.nsplit types "," in
-      let types = BatList.filter_map begin fun t -> 
-	try let param, typ = BatString.split t ":" in
-	    let param = BatString.trim param in
-	    let typ   = BatString.trim typ in
-	    let opt, param = 
-	      if param.[0] = '?' then 
-		true, BatString.trim (String.sub param 1 (String.length param - 1))
-	      else
-		false, param
-	    in
-	    Some (opt, param, typ, type_fmt typ)
-	with _ -> None
-      end types in
+      let types = Str.matched_group 2 definition in      
+      let types = parse_types types in
       Some (name, types) 
     else
       None
@@ -94,7 +97,7 @@ let extract_types coffee =
       List.map 
 	(fun (opt,name,_,(_,t)) -> 
 	  if opt then
-	    !! "BatOption.default Json.Null (BatOption.map (fun _x -> %s) %s)"
+	    !! "BatOption.default Ohm.Json.Null (BatOption.map (fun _x -> %s) %s)"
 	      (t "_x") name
 	  else
 	    t name) types	  

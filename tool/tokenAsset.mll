@@ -21,6 +21,7 @@
     | ELSE _ -> "{else}"
     | OPEN _ -> "{"
     | CLOSE _ -> "}"
+    | SCRIPT _ -> "<script/>"
     | STYLE _ -> "<style/>"
     | EOF -> "EOF"
     | MODULE (_,_) -> "Module"
@@ -52,6 +53,9 @@ rule outer = parse
   | "{/@}"    { CLOSE_DEF    (pos lexbuf) } 
 
   | "<style>" { let s = style lexbuf in STYLE s }
+  | "<script>" { let s = script lexbuf in SCRIPT (None,s) } 
+  | "<script type=\"" ( [^ '\"'] * as t ) "\">"
+      { let s = script lexbuf in SCRIPT (Some t, s) }
 
   | eof       { EOF } 
 
@@ -75,7 +79,12 @@ and inner = parse
 and style = shortest 
   | ([^ '\n']* as s) "</style>" { s }
   | ([^ '\n']* as s) '\n' { Lexing.new_line lexbuf ; s ^ "\n" ^ style lexbuf }
-  | ([^ '\n']*  as s) eof{ s }
+  | ([^ '\n']* as s) eof { s }
+
+and script = shortest 
+  | ([^ '\n']* as s) "</script>" { s }
+  | ([^ '\n']* as s) '\n' { Lexing.new_line lexbuf ; s ^ "\n" ^ script lexbuf }
+  | ([^ '\n']* as s) eof { s }
 
 {
 

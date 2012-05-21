@@ -316,6 +316,7 @@ let parsed_assets = lazy begin
   let coffee = List.sort (fun a b -> compare (fst a) (fst b)) coffee in
   
   let all_coffee = String.concat "\n" (List.map snd coffee) in
+  let all_coffee = all_coffee ^ "\n" ^ Buffer.contents strings.SyntaxAsset.coffee in
   let coffee_md5 = Digest.to_hex (Digest.string all_coffee) in
 
   let js_ml, js_mli = Coffee.extract_types all_coffee in
