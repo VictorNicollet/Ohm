@@ -60,6 +60,7 @@ and typedef =
   | `float
   | `int 
   | `unit
+  | `self
   | `option of typexpr
   | `list   of typexpr
   | `array  of typexpr
@@ -270,6 +271,8 @@ let generate_t_of_json _loc (def:typexpr) =
 
     | `unit -> <:expr< () >>
 
+    | `self -> <:expr< t_of_json $src$ >>
+
     | `m m -> begin
       let f = in_module <:ident< of_json >> m in
       <:expr< $id:f$ $src$ >>
@@ -459,6 +462,8 @@ let generate_json_of_t _loc (def:typexpr) =
     | `float  -> <:expr< Json.Float $src$ >>
     | `bool   -> <:expr< Json.Bool $src$ >>
     | `unit   -> <:expr< Json.Null >>
+
+    | `self   -> <:expr< json_of_t $src$ >> 
       
     | `m m    -> begin 
       let f = in_module <:ident< to_json >> m in
@@ -619,7 +624,7 @@ let generate_json_of_t _loc (def:typexpr) =
     <:binding< $p$ = $f$ >> 
   in
 
-  <:str_item< value $b$ >> 
+  <:str_item< value rec $b$ >> 
 
 let generate_type _loc (def:typexpr) = 
 
@@ -652,6 +657,7 @@ let generate_type _loc (def:typexpr) =
     | `int    -> <:ctyp< int >>
     | `float  -> <:ctyp< float >>
     | `unit   -> <:ctyp< unit >>
+    | `self   -> <:ctyp< t >>
 
     | `list   t -> <:ctyp< list $recurse t$ >>
     | `array  t -> <:ctyp< array $recurse t$ >>
@@ -825,6 +831,7 @@ EXTEND Gram
       | LIDENT "float"  -> (_loc,`float) 
       | LIDENT "int"    -> (_loc,`int)
       | LIDENT "unit"   -> (_loc,`unit)
+      | LIDENT "t"      -> (_loc,`self)
 	
       | t = typexpr ; LIDENT "option" -> (_loc, `option t) 
       | t = typexpr ; LIDENT "list"   -> (_loc, `list t) 
