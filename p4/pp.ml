@@ -91,7 +91,7 @@ let ident = snd
 let tn _loc i = <:ident< $"_t_" ^string_of_int i$ >>
 
 let error _loc text src = 
-  let s = <:expr< $str:("Expecting " ^ text ^ ", found ")$ ^ Json.to_string $src$ >> in
+  let s = <:expr< $str:("Expecting " ^ text ^ ", found ")$ ^ Json.serialize $src$ >> in
   <:expr< raise (Json.Error ($s$)) >>
 
 let fresh = 
