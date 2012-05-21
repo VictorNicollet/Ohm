@@ -129,7 +129,7 @@ let fetch database =
 		Run.return ()
 	  end 
 	  | keys -> begin 
-	    let keys_str = Json.to_string 
+	    let keys_str = Json.serialize 
 	      (Json.of_list
 		 (fun key -> Id.to_json key.CacheKey.id) keys) in
 	    let url = String.concat "" 
