@@ -7,6 +7,7 @@
   let string_of_token = function
     | STR _ -> "%"
     | EOL _ -> "\n" 
+    | ID _ -> "id=$"
     | OPEN_LIST _ -> "{#"
     | CLOSE_LIST _ -> "{/#}"
     | OPEN_OPTION _ -> "{?"
@@ -51,6 +52,8 @@ rule outer = parse
   | "{@"      { OPEN_DEF     (pos lexbuf) }
   | "{@!"     { OPEN_SDEF    (pos lexbuf) }
   | "{/@}"    { CLOSE_DEF    (pos lexbuf) } 
+
+  | "{$" (['a'-'z' 'A'-'Z' '0'-'9' '_'] + as id) '}' { ID (id,pos lexbuf) } 
 
   | "<style>" { let s = style lexbuf in STYLE s }
   | "<script>" { let s = script lexbuf in SCRIPT (None,s) } 

@@ -10,7 +10,7 @@
 %token < SyntaxAsset.pos > OPEN_LIST ELSE OPEN_IF OPEN_OPTION DOT
 %token < SyntaxAsset.pos > OPEN OPEN_SUB CLOSE_SUB OPEN_DEF CLOSE_DEF EOL EQUAL CLOSE PIPE
 %token < SyntaxAsset.pos > CLOSE_IF CLOSE_LIST CLOSE_OPTION OPEN_SDEF
-%token < string * SyntaxAsset.pos > STR MODULE IDENT VARIANT
+%token < string * SyntaxAsset.pos > STR MODULE IDENT VARIANT ID
 %token < char * SyntaxAsset.pos > ERROR
 %token EOF
 
@@ -29,6 +29,7 @@ cells :
 ;
 
 cell : 
+  | ID { Cell_Id (located $1) } 
   | STYLE { Cell_Style $1 }
   | SCRIPT { let t,s = $1 in Cell_Script (t,s) } 
   | STR { Cell_String (fst $1) }

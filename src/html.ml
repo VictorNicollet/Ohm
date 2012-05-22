@@ -75,6 +75,11 @@ module Convenience = struct
 	     esc src ;
 	     str "\"></script>" ]
 
+  let id id = 
+    concat [ str "id=\"" ;
+	     esc (Id.str id) ;
+	     str "\"" ] 
+
 end
 
 let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title writer more_js = 

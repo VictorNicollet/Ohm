@@ -23,6 +23,8 @@ module Convenience : sig
     
   val script : string -> writer
 
+  val id : Id.t -> writer
+
 end
 
 val print_page : 

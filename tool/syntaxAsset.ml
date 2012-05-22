@@ -7,6 +7,7 @@ type cell =
   | Cell_Print  of expr 
   | Cell_AdLib  of located * expr option
   | Cell_If     of expr * cell list * cell list
+  | Cell_Id     of located
   | Cell_Option of located option * expr * cell list * cell list
   | Cell_List   of located option * expr * cell list * cell list
   | Cell_Sub    of expr * cell list
@@ -297,6 +298,7 @@ let clean_string s =
 
 let rec clean_strings = function 
   | [] -> [] 
+  | Cell_Id s :: tail -> Cell_Id s :: clean_strings tail 
   | Cell_Script (t,s) :: tail -> Cell_Script (t,s) :: clean_strings tail
   | Cell_Style  s :: tail -> Cell_Style s :: clean_strings tail 
   | Cell_String a :: Cell_String b :: tail -> clean_strings (Cell_String (a ^ b) :: tail) 
@@ -321,6 +323,7 @@ let rec clean_strings = function
 
 type buffered_cell = 
     [ `Print  of expr
+    | `Id     of located
     | `AdLib  of located * expr option
     | `If     of expr * buffered_cell list * buffered_cell list
     | `Option of located option * expr * buffered_cell list * buffered_cell list
@@ -359,7 +362,8 @@ let rec extract_strings extracted list =
     let args  = String.concat "," (List.map (fun (_,n,_,_) -> n) types) in
     let id = extracted.id in
     let name = "ohm" ^ string_of_int id in 
-    Buffer.add_string extracted.coffee (Printf.sprintf "\n@%s = (%s) ->\n  " name args) ;
+    Buffer.add_string extracted.coffee 
+      (Printf.sprintf "\n@%s = (here,%s) ->\n  here[k] = $('#'+here[k]) for k of here\n  " name args) ;
     let script = String.concat "\n  " (BatString.nsplit script "\n") in
     Buffer.add_string extracted.coffee script ; 
     let extracted = { extracted with id = succ id } in    
@@ -368,6 +372,7 @@ let rec extract_strings extracted list =
 
   let extract extracted = function
     | Cell_Print e -> extracted, `Print e
+    | Cell_Id id -> extracted, `Id id
     | Cell_AdLib (v,e) -> extracted, `AdLib (v,e)
     | Cell_Style s -> Buffer.add_string extracted.css s ; extracted, `String (0,0)
     | Cell_Script (t,s) -> coffee extracted t s 
@@ -400,6 +405,7 @@ let rec extract_strings extracted list =
 type clean_cell = 
   [ `Print  of expr
   | `AdLib  of located * expr option
+  | `Id     of located 
   | `If     of expr * clean_cell list * clean_cell list
   | `Option of located option * expr * clean_cell list * clean_cell list
   | `List   of located option * expr * clean_cell list * clean_cell list
@@ -413,6 +419,7 @@ let rec extract_assets revpath sub (list : buffered_cell list) =
   let extract sub = function
     | `Print e    -> sub, `Print e 
     | `Script s   -> sub, `Script s
+    | `Id id      -> sub, `Id id
     | `AdLib (v,e) -> sub, `AdLib (v,e)
     | `If (e,a,b) -> let sub, a = extract_assets revpath sub a in
 		     let sub, b = extract_assets revpath sub b in 
@@ -439,17 +446,72 @@ let rec extract_assets revpath sub (list : buffered_cell list) =
 	| _ ->  (sub, cell :: out))
     list (sub,[])
 
+(* This extracts `Id cells back to the highest scope they can be defined in. *)
+
+type id_cell = 
+  [ `Print  of expr
+  | `AdLib  of located * expr option
+  | `Id     of int
+  | `DefId  of (int * located) list * id_cell list
+  | `If     of expr * id_cell list * id_cell list
+  | `Option of located option * expr * id_cell list * id_cell list
+  | `List   of located option * expr * id_cell list * id_cell list
+  | `String of int * int
+  | `Sub    of expr * id_cell list 
+  | `Call   of string list
+  | `Script of string * Coffee.typ list
+  ]
+
+let extract_ids (list : clean_cell list) = 
+
+  let wrap ((_,defs),inner) = 
+    if defs <> [] then [`DefId (defs,inner)] else inner
+  in
+  
+  let rec recurse (n,defs) list = 
+    let extract (n,defs)= function
+      | `Print e    -> (n,defs), `Print e 
+      | `Script s   -> (n,defs), `Script s
+      | `Id id      -> (succ n,(n,id) :: defs), `Id n
+      | `AdLib (v,e) -> (n,defs), `AdLib (v,e)
+      | `If (e,a,b) -> let a = wrap (recurse (n,[]) a) in
+		       let b = wrap (recurse (n,[]) b) in 
+		       (n,defs), `If (e,a,b) 
+      | `Option (l,e,a,b) -> let a = wrap (recurse (n,[]) a) in
+			     let b = wrap (recurse (n,[]) b) in
+			     (n,defs), `Option (l,e,a,b) 
+      | `List (l,e,a,b) -> let a = wrap (recurse (n,[]) a) in
+			   let b = wrap (recurse (n,[]) b) in 
+			   (n,defs), `List (l,e,a,b) 
+      | `Sub (e,l) -> let sub, l = recurse (n,defs) l in
+		      sub, `Sub (e,l)
+      | `String (s,l) -> (n,defs), `String (s,l) 
+      | `Call l -> (n,defs), `Call l 
+    in
+ 
+    List.fold_right 
+      (fun cell (sub,out) -> 
+	let sub, cell = extract sub cell in 
+	(sub, cell :: out))
+      list ((n,defs),[])
+  in
+
+  wrap (recurse (0,[]) list)
+
 (* This extracts expressions from a cell list upward to a root,
    so they are evaluated together. *)
 
 type rooted_cell = 
     [ `Print  of int 
     | `String of int * int
-    | `Script of string * Coffee.typ list
+    | `Id     of int
+    | `Script of string * (int * located) list * Coffee.typ list
     ]
 
 and cell_root = 
-  [ `Render  of rooted_cell list 
+  [ `Render  of rooted_cell list
+  | `DefId   of int list * cell_root 
+  | `Seq     of cell_root * cell_root 
   | `Extract of int * located option * cell_root
   | `AdLib   of int * located * int option * cell_root
   | `Apply   of int * int * located list * cell_root
@@ -467,7 +529,7 @@ let contents x = x.contents
 let uid = ref 0
 let getuid () = incr uid ; !uid 
 
-let rec extract_roots ?(accum=[]) (list:clean_cell list) = 
+let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) = 
 
   let split_expr ?(printed=false) (var,flags) = 
     let uid  = getuid () in 
@@ -493,13 +555,23 @@ let rec extract_roots ?(accum=[]) (list:clean_cell list) =
 
   match list with 
     | [] -> `Render (List.rev accum) 
+    | `Id id :: tail -> let accum = `Id id :: accum in
+			extract_roots ~ids ~accum tail 
+    | [`DefId (i,l)]  -> let ids = ids @ i in 
+			 `DefId (List.map fst i,extract_roots ~ids ~accum l) 
+    | `DefId (i,l) :: tail -> let a = 
+				let ids = ids @ i in 
+				`DefId (List.map fst i,extract_roots ~ids ~accum l)
+			      in
+ 			      let b = extract_roots ~ids ~accum tail in
+			      `Seq ( a, b ) 
     | `String (start,length) :: tail -> let accum = `String (start,length) :: accum in 
-					extract_roots ~accum tail 
+					extract_roots ~ids ~accum tail 
     | `Print expr :: tail -> let uid, fill = split_expr ~printed:true expr in 
 			     let accum = `Print uid :: accum in
-			     fill (extract_roots ~accum tail) 
-    | `Script (name,types) :: tail -> let accum = `Script (name,types) :: accum in 
-				      extract_roots ~accum tail 
+			     fill (extract_roots ~ids ~accum tail) 
+    | `Script (name,types) :: tail -> let accum = `Script (name,ids,types) :: accum in 
+				      extract_roots ~ids ~accum tail 
     | `AdLib (variant,expr) :: tail -> let uid, fill = match expr with 
                                          | None -> None, (fun inner -> inner) 
 					 | Some e -> let uid, fill = split_expr e in
@@ -510,50 +582,52 @@ let rec extract_roots ?(accum=[]) (list:clean_cell list) =
 				       let fill inner = 
 					 fill (`AdLib (uid', variant, uid, inner))
 				       in
-				       fill (extract_roots ~accum tail) 
+				       fill (extract_roots ~ids ~accum tail) 
     | `Sub (e,l) :: tail -> let uid, fill = split_expr e in 
 			    let uid' = getuid () in
-			    let fill inner = fill (`Sub (uid', uid, extract_roots l, inner)) in
+			    let fill inner = fill (`Sub (uid', uid, extract_roots ~ids l, inner)) in
 			    let accum = `Print uid' :: accum in
 			    fill (extract_roots ~accum tail) 
     | `Option (l,e,a,b) :: tail -> let uid, fill = split_expr e in
 				   let uid' = getuid () in
-				   let a, b = extract_roots a, extract_roots b in
+				   let a, b = extract_roots ~ids a, extract_roots ~ids b in
 				   let fill inner = fill (`Option (uid',l,uid,a,b,inner)) in 
 				   let accum = `Print uid' :: accum in 
-				   fill (extract_roots ~accum tail) 
+				   fill (extract_roots ~ids ~accum tail) 
     | `List (l,e,a,b) :: tail ->  let uid, fill = split_expr e in
 				  let uid' = getuid () in
-				  let a, b = extract_roots a, extract_roots b in 
+				  let a, b = extract_roots ~ids a, extract_roots ~ids b in 
 				  let fill inner = fill (`List (uid',l,uid,a,b,inner)) in
 				  let accum = `Print uid' :: accum in 
-				  fill (extract_roots ~accum tail) 
+				  fill (extract_roots ~ids ~accum tail) 
     | `If (e,a,b) :: tail -> let uid, fill = split_expr e in
 			     let uid' = getuid () in
-			     let a, b = extract_roots a, extract_roots b in 
+			     let a, b = extract_roots ~ids a, extract_roots ~ids b in 
 			     let fill inner = fill (`If (uid',uid,a,b,inner)) in
 			     let accum = `Print uid' :: accum in 
-			     fill (extract_roots ~accum tail) 
+			     fill (extract_roots ~ids ~accum tail) 
     | `Call l :: tail -> let uid = getuid () in
-			 `Call (uid, l, extract_roots ~accum:(`Print uid :: accum) tail) 
+			 `Call (uid, l, extract_roots ~ids ~accum:(`Print uid :: accum) tail) 
       
 let formats root = 
   let rec recurse (acc:string list) = function
     | `Render list -> List.concat ((List.map (function 
-	| `Script (_,types) -> BatList.filter_map (fun (_,_,_,(fmt,_)) -> fmt) types
+	| `Script (_,_,types) -> BatList.filter_map (fun (_,_,_,(fmt,_)) -> fmt) types
 	| _                 -> []) list) @ [acc])
     | `Extract (_,_,r)
     | `AdLib (_,_,_,r) 
     | `Apply (_,_,_,r) 
     | `Ohm (_,_,r) 
-    | `Put (_,_,_,r) 
+    | `Put (_,_,_,r)
+    | `DefId (_,r)  
     | `Call (_,_,r) -> recurse acc r
     | `List (_,_,_,a,b,r)  
     | `Option (_,_,_,a,b,r) 
     | `If (_,_,a,b,r) -> let acc = recurse acc r in
 			 let acc = recurse acc a in
 			 recurse acc b 
-    | `Sub (_,_,a,b) -> recurse (recurse acc a) b
+    | `Sub (_,_,a,b) 
+    | `Seq (a,b) -> recurse (recurse acc a) b
   in
   recurse [] root
 

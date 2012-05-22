@@ -71,7 +71,8 @@ let generate_source string =
 
 let generate_asset revpath asset = 
 
-  let root : SyntaxAsset.cell_root = SyntaxAsset.extract_roots asset in 
+  let ids : SyntaxAsset.id_cell list = SyntaxAsset.extract_ids asset in
+  let root : SyntaxAsset.cell_root = SyntaxAsset.extract_roots ids in 
 
   let formats = SyntaxAsset.formats root in 
 
@@ -83,13 +84,27 @@ let generate_asset revpath asset =
       | `String (start,length) -> Some (
 	`Stmt (!! "Buffer.add_substring _html.Ohm.Html.html _source %d %d ;"
 		  start length))
-      | `Script (s,t) -> Some (
-	let args = String.concat ";" begin List.map (fun (_,name,_,(_,serialize)) ->
-	  let what = if name = "this" then "_data" else !! "(_data # %s)" name in
-	  serialize what
-	) t 
-	end in 
-	`Stmt (!! "Ohm.Html.run (Ohm.JsCode.make ~name:%S ~args:[%s]) _html ;" s args))
+      | `Id i -> Some (
+	`Stmt (!! "Ohm.Html.Convenience.id _here_%d _html ;" i) 
+      )
+      | `Script (s,k,t) -> Some (
+
+	let args = 
+	  String.concat ";" begin List.map (fun (_,name,_,(_,serialize)) ->
+	    let what = if name = "this" then "_data" else !! "(_data # %s)" name in
+	    serialize what
+	  ) t end 
+	in
+
+	let here = 
+	  String.concat ";" begin List.map (fun (i,n) -> 
+	  !! "%S,Ohm.Id.to_json _here_%d" ("$" ^ SyntaxAsset.contents n) i
+	  ) k end 
+	in 
+	
+	`Stmt (!! "Ohm.Html.run (Ohm.JsCode.make ~name:%S ~args:[Ohm.Json.Object [%s];%s]) _html ;" 
+		  s here args)
+      )
     in
 
     let rec print_root = function 
@@ -112,6 +127,15 @@ let generate_asset revpath asset =
 	    ( `Stmt (!! "let _%d = () in" uid))
 	    :: print_root tail
       end
+      | `DefId ([],tail) -> print_root tail 
+      | `DefId (h::t,tail) -> 
+	( `Stmt (!! "let _here_%d = Ohm.Id.gen () in" h))
+	:: print_root (`DefId (t,tail))
+      | `Seq (a,b) -> 
+	(`Stmt "let () = Ohm.Universal.ohm begin ")
+	:: (`Indent (print_root a)) 
+	:: (`Stmt "in")
+	:: print_root b
       | `Apply (uid,uid',what,tail) -> 
 	( `Stmt (!! "let  _%d = _%d |> %s in" uid uid' 
 		    (String.concat "." (List.map SyntaxAsset.contents what))))
