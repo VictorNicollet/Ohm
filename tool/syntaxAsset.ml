@@ -448,6 +448,10 @@ let rec extract_assets revpath sub (list : buffered_cell list) =
 
 (* This extracts `Id cells back to the highest scope they can be defined in. *)
 
+
+let uid = ref 0
+let getuid () = incr uid ; !uid 
+
 type id_cell = 
   [ `Print  of expr
   | `AdLib  of located * expr option
@@ -464,39 +468,40 @@ type id_cell =
 
 let extract_ids (list : clean_cell list) = 
 
-  let wrap ((_,defs),inner) = 
+  let wrap (defs,inner) = 
     if defs <> [] then [`DefId (defs,inner)] else inner
   in
   
-  let rec recurse (n,defs) list = 
-    let extract (n,defs)= function
-      | `Print e    -> (n,defs), `Print e 
-      | `Script s   -> (n,defs), `Script s
-      | `Id id      -> (succ n,(n,id) :: defs), `Id n
-      | `AdLib (v,e) -> (n,defs), `AdLib (v,e)
-      | `If (e,a,b) -> let a = wrap (recurse (n,[]) a) in
-		       let b = wrap (recurse (n,[]) b) in 
-		       (n,defs), `If (e,a,b) 
-      | `Option (l,e,a,b) -> let a = wrap (recurse (n,[]) a) in
-			     let b = wrap (recurse (n,[]) b) in
-			     (n,defs), `Option (l,e,a,b) 
-      | `List (l,e,a,b) -> let a = wrap (recurse (n,[]) a) in
-			   let b = wrap (recurse (n,[]) b) in 
-			   (n,defs), `List (l,e,a,b) 
-      | `Sub (e,l) -> let sub, l = recurse (n,defs) l in
-		      sub, `Sub (e,l)
-      | `String (s,l) -> (n,defs), `String (s,l) 
-      | `Call l -> (n,defs), `Call l 
+  let rec recurse defs list = 
+    let extract defs = function
+      | `Print e    -> defs, `Print e 
+      | `Script s   -> defs, `Script s
+      | `Id id      -> let n = getuid () in
+		       ((n,id) :: defs), `Id n
+      | `AdLib (v,e) -> defs, `AdLib (v,e)
+      | `If (e,a,b) -> let a = wrap (recurse [] a) in
+		       let b = wrap (recurse [] b) in 
+		       defs, `If (e,a,b) 
+      | `Option (l,e,a,b) -> let a = wrap (recurse [] a) in
+			     let b = wrap (recurse [] b) in
+			     defs, `Option (l,e,a,b) 
+      | `List (l,e,a,b) -> let a = wrap (recurse [] a) in
+			   let b = wrap (recurse [] b) in 
+			   defs, `List (l,e,a,b) 
+      | `Sub (e,l) -> let defs, l = recurse defs l in
+		      defs, `Sub (e,l)
+      | `String (s,l) -> defs, `String (s,l) 
+      | `Call l -> defs, `Call l 
     in
  
     List.fold_right 
-      (fun cell (sub,out) -> 
-	let sub, cell = extract sub cell in 
-	(sub, cell :: out))
-      list ((n,defs),[])
+      (fun cell (defs,out) -> 
+	let defs, cell = extract defs cell in 
+	(defs, cell :: out))
+      list (defs,[])
   in
 
-  wrap (recurse (0,[]) list)
+  wrap (recurse [] list)
 
 (* This extracts expressions from a cell list upward to a root,
    so they are evaluated together. *)
@@ -525,9 +530,6 @@ and cell_root =
   ]
 
 let contents x = x.contents
-
-let uid = ref 0
-let getuid () = incr uid ; !uid 
 
 let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) = 
 

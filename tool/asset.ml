@@ -85,7 +85,7 @@ let generate_asset revpath asset =
 	`Stmt (!! "Buffer.add_substring _html.Ohm.Html.html _source %d %d ;"
 		  start length))
       | `Id i -> Some (
-	`Stmt (!! "Ohm.Html.Convenience.id _here_%d _html ;" i) 
+	`Stmt (!! "Ohm.Html.Convenience.id _%d _html ;" i) 
       )
       | `Script (s,k,t) -> Some (
 
@@ -98,7 +98,7 @@ let generate_asset revpath asset =
 
 	let here = 
 	  String.concat ";" begin List.map (fun (i,n) -> 
-	  !! "%S,Ohm.Id.to_json _here_%d" ("$" ^ SyntaxAsset.contents n) i
+	  !! "%S,Ohm.Id.to_json _%d" ("$" ^ SyntaxAsset.contents n) i
 	  ) k end 
 	in 
 	
@@ -124,15 +124,15 @@ let generate_asset revpath asset =
 	      ( `Stmt (!! "let  _%d = _data # %s in" uid contents ) )
 	      :: print_root tail
 	  | None -> 
-	    ( `Stmt (!! "let _%d = () in" uid))
+	    ( `Stmt (!! "let  _%d = () in" uid))
 	    :: print_root tail
       end
       | `DefId ([],tail) -> print_root tail 
       | `DefId (h::t,tail) -> 
-	( `Stmt (!! "let _here_%d = Ohm.Id.gen () in" h))
+	( `Stmt (!! "let  _%d = Ohm.Id.gen () in" h))
 	:: print_root (`DefId (t,tail))
       | `Seq (a,b) -> 
-	(`Stmt "let () = Ohm.Universal.ohm begin ")
+	(`Stmt "let! () = Ohm.Universal.ohm begin ")
 	:: (`Indent (print_root a)) 
 	:: (`Stmt "in")
 	:: print_root b
