@@ -25,7 +25,7 @@ let type_fmt = function
   | "int"         -> None, !! "Ohm.Json.Int    %s"
   | "string"      -> None, !! "Ohm.Json.String %s"
   | "float"       -> None, !! "Ohm.Json.Float  %s"
-  | "bool"        -> None, !! "Ohm.Json.Float  %s"
+  | "bool"        -> None, !! "Ohm.Json.Bool   %s"
   | "int list"    -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.Int _x) %s)"
   | "string list" -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.String _x) %s)"
   | "float list"  -> None, !! "Ohm.Json.Array (List.map (fun _x -> Ohm.Json.Float _x) %s)" 
