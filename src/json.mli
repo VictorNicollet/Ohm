@@ -40,3 +40,4 @@ val to_assoc  : t -> (string * t) list
 
 val parse     : (t -> 'a) -> t -> ('a,exn) BatStd.result 
  
+val parse_error : string -> t -> 'a 
