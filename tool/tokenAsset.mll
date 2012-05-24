@@ -17,7 +17,7 @@
     | OPEN_DEF _ -> "{@"
     | OPEN_SDEF _ -> "{@!"
     | CLOSE_DEF _ -> "{/@}"
-    | OPEN_IF _ -> "{if"
+    | OPEN_IF _ -> "{if "
     | CLOSE_IF _ -> "{/if}"
     | ELSE _ -> "{else}"
     | OPEN _ -> "{"
@@ -43,7 +43,7 @@ rule outer = parse
   | "{/#}"    { CLOSE_LIST   (pos lexbuf) } 
   | "{/?}"    { CLOSE_OPTION (pos lexbuf) } 
   | "{else}"  { ELSE         (pos lexbuf) } 
-  | "{if"     { OPEN_IF      (pos lexbuf) } 
+  | "{if "    { OPEN_IF      (pos lexbuf) } 
   | "{/if}"   { CLOSE_IF     (pos lexbuf) }
   | "{?"      { OPEN_OPTION  (pos lexbuf) } 
   | "{"       { OPEN         (pos lexbuf) } 
@@ -111,7 +111,7 @@ and script = shortest
       match !mode with 
 	| `OUTER -> let tok = outer lexbuf in 
 		    if opens tok then mode := `INNER ;
-		    (* print_string (string_of_token tok) ; *)
+		    (* print_string (string_of_token tok) ; *) 
 		    tok
 	| `INNER -> let tok = inner lexbuf in 
 		    if closes tok then mode := `OUTER ;
