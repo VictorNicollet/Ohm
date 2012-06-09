@@ -81,11 +81,18 @@ let error_writefile =
      "ohm-tool needs to write the contents of file %S, but open_out_bin raised an exception: '%s'"
 
 let putfile path contents = 
-  try let channel = Pervasives.open_out_bin path in 
-      Pervasives.output_string channel contents ;
-      Pervasives.close_out channel 
-  with exn -> error_writefile path exn 
 
+  let should = 
+    try Digest.file path <> Digest.string contents
+    with _ -> true
+  in
+
+  if should then 
+    try let channel = Pervasives.open_out_bin path in 
+	Pervasives.output_string channel contents ;
+	Pervasives.close_out channel 
+    with exn -> error_writefile path exn 
+      
 let error_parse path = function
   | Asset.ParseError pos ->
     error
