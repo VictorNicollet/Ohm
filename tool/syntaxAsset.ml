@@ -363,7 +363,8 @@ let rec extract_strings extracted list =
     let id = extracted.id in
     let name = "ohm" ^ string_of_int id in 
     Buffer.add_string extracted.coffee 
-      (Printf.sprintf "\n@%s = (here,%s) ->\n  here[k] = $('#'+here[k]) for k of here\n  " name args) ;
+      (Printf.sprintf "\n@%s = (here%s%s) ->\n  here[k] = $('#'+here[k]) for k of here\n  " name 
+	 (if types = [] then "" else ",") args) ;
     let script = String.concat "\n  " (BatString.nsplit script "\n") in
     Buffer.add_string extracted.coffee script ; 
     let extracted = { extracted with id = succ id } in    
