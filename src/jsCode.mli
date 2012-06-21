@@ -2,7 +2,7 @@
 
 type call = {
   name : string ;
-  args : Json_type.t list 
+  args : Json.t list 
 }
 
 module Endpoint : sig
@@ -20,8 +20,7 @@ type t = Leaf of call | Node of t list
 
 val empty : t 
 
-val make : name:string -> args:Json_type.t list -> t
-
+val make : name:string -> args:Json.t list -> t
 
 val seq : t list -> t 
 
@@ -29,4 +28,4 @@ val list_of_tree : t -> call list
 
 val to_script : t -> string
 val to_event  : t -> string
-val to_json   : t -> Json_type.t
+val to_json   : t -> Json.t

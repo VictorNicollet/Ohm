@@ -5,7 +5,7 @@ open BatPervasives
 
 type call = {
   name : string ;
-  args : Json_type.t list 
+  args : Json.t list 
 }
 
 module Endpoint = struct
