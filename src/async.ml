@@ -82,6 +82,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
   let save_task delay name args = 
     let  id   = Id.gen () in
     let! time = ohmctx (#time) in
+    let  time = match delay with None -> time | Some delay -> time +. delay in 
     let  task = Task.({ time ; calls = 0 ; name ; args }) in
     let! _    = ohm $ MyTable.transaction id (MyTable.insert task) in
     return ()
