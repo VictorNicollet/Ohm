@@ -1,4 +1,4 @@
-(* Ohm is © 2011 Victor Nicollet *)
+(* Ohm is © 2012 Victor Nicollet *)
 
 open Util
 open BatPervasives
