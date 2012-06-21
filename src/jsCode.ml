@@ -8,11 +8,25 @@ type call = {
   args : Json_type.t list 
 }
 
+module Endpoint = struct
+
+  type t = Url of string | Js of call
+
+  let of_url url = Url url
+  let of_js ~name ~args = Js { name ; args }
+
+  let to_json = function
+    | Url url -> Json.String url
+    | Js  js  -> Json.Array ( Json.String js.name :: js.args )
+      
+end
+
 type t = Leaf of call | Node of t list
 
 let empty = Node []
 
 let make ~name ~args = Leaf ({ name = name ; args = args }) 
+
 
 let seq list = Node list
 
