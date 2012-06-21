@@ -25,8 +25,7 @@ type t = Leaf of call | Node of t list
 
 let empty = Node []
 
-let make ~name ~args = Leaf ({ name = name ; args = args }) 
-
+let make ~name ~args = Leaf { name ; args }
 
 let seq list = Node list
 
