@@ -143,6 +143,7 @@ val largest : t
 val next : t -> t
 
 val arg : (t -> string) * (string -> t option)
+val seg : (t -> string) * (string -> t)
 
 (** The type of a strongly typed identifier module. These modules define a new identifier type tagged
     with a type parameter that carries additional information about the identifier. The new identifier
@@ -181,6 +182,7 @@ module type PHANTOM = sig
   val decay : 'any id -> t
 
   val arg : (t -> string) * (string -> t option) 
+  val seg : (t -> string) * (string -> t)
 
 end
 
@@ -208,5 +210,6 @@ module Phantom : sig
   val of_string : string -> t
 
   val arg : (t -> string) * (string -> t option)
+  val seg : (t -> string) * (string -> t)
 
 end

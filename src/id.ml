@@ -19,6 +19,7 @@ let length   = 11
 let smallest = ""
 let largest  = String.make length 'z'
 
+let seg = identity, identity
 let arg = identity, (fun x -> Some x) 
 
 let next_char = function
@@ -62,7 +63,7 @@ module Phantom = struct
 
   let fmt     = fmt
   let arg     = identity, (fun x -> Some x)
-
+  let seg     = identity, identity
 end
   
 module type PHANTOM = sig
@@ -89,5 +90,6 @@ module type PHANTOM = sig
   val decay : 'any id -> t
 
   val arg : (t -> string) * (string -> t option)
+  val seg : (t -> string) * (string -> t)
 
 end
