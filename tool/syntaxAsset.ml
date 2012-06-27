@@ -590,7 +590,7 @@ let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) =
 			    let uid' = getuid () in
 			    let fill inner = fill (`Sub (uid', uid, extract_roots ~ids l, inner)) in
 			    let accum = `Print uid' :: accum in
-			    fill (extract_roots ~accum tail) 
+			    fill (extract_roots ~ids ~accum tail) 
     | `Option (l,e,a,b) :: tail -> let uid, fill = split_expr e in
 				   let uid' = getuid () in
 				   let a, b = extract_roots ~ids a, extract_roots ~ids b in
