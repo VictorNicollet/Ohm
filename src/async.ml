@@ -17,6 +17,12 @@ exception Reschedule
 
 type ('ctx,'a) task = ?delay:float -> 'a -> ('ctx,unit) Run.t
 
+class type ['ctx] manager = object
+  method define : 'a. string -> 'a Fmt.fmt -> ('a -> ('ctx,unit) Run.t) -> ('ctx,'a) task
+  method declare : 'a. string -> 'a Fmt.fmt -> ('ctx,'a) task * (('a -> ('ctx,unit) Run.t) -> unit)
+  method periodic : int -> ('ctx,float option) Run.t -> unit
+end
+
 module Make = functor(DB:CouchDB.CONFIG) -> struct
 
   let log fmt = Util.log fmt
@@ -212,5 +218,18 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
       process false list
 
   end
+
+end
+
+module Convenience = struct
+
+  let foreach (manager:'c manager) name fmt iterator action = 
+    let task, define = manager # declare name (Fmt.optional fmt) in
+    let () = define begin fun key -> 
+      let! list, next = ohm $ iterator key in
+      let! () = ohm $ Run.list_iter action list in
+      if next = None then return () else task next
+    end in 
+    fun ?delay () -> task ?delay None
 
 end

@@ -50,6 +50,15 @@ val delay : float
 *)
 val sleep : float
 
+(** The interface used by task managers. Implemented by the manager 
+    provided in functor {!Make} 
+*)
+class type ['ctx] manager = object
+  method define : 'a. string -> 'a Fmt.fmt -> ('a -> ('ctx,unit) Run.t) -> ('ctx,'a) task
+  method declare : 'a. string -> 'a Fmt.fmt -> ('ctx,'a) task * (('a -> ('ctx,unit) Run.t) -> unit)
+  method periodic : int -> ('ctx,float option) Run.t -> unit
+end
+
 (** A task execution environment, using a database to save data. *)
 module Make : functor(DB:CouchDB.CONFIG) -> sig
 
@@ -90,5 +99,18 @@ module Make : functor(DB:CouchDB.CONFIG) -> sig
     method run : (unit -> 'ctx) -> bool
 
   end
+
+end
+
+(** Convenience functions *)
+module Convenience : sig
+
+  val foreach :
+        'ctx manager
+    ->  string
+    ->  'key Fmt.fmt
+    -> ('key option -> ('ctx, 'key list * 'key option) Run.t)  
+    -> ('key -> ('ctx,unit) Run.t) 
+    -> ('ctx,unit) task
 
 end
