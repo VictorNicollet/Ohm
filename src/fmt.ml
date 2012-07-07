@@ -9,6 +9,17 @@ type 'a t = {
 
 type 'a fmt = 'a t
 
+let optional fmt = { 
+  to_json = (function 
+    | Some x -> fmt.to_json x
+    | None   -> Json.Null) ;
+  of_json = (function 
+    | Json.Null -> Some None
+    | other -> match fmt.of_json other with 
+	| Some x -> Some (Some x)
+	| None   -> None)
+}
+
 let protect ?save f v = 
   let fail error =     
     log "Format: `%s` on: %s" error (logjson v) ;

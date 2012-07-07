@@ -7,6 +7,8 @@ type 'a t = {
 
 type 'a fmt = 'a t
 
+val optional : 'a fmt -> 'a option fmt
+
 val protect : ?save:(Json.t -> Json.t) -> (Json.t -> 'a) -> Json.t -> 'a option
 
 val real_value : Json.t -> Json.t option
