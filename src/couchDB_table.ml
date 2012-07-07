@@ -85,25 +85,19 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 	Util.log "CouchDB : `%s` : Error %s" url (Printexc.to_string exn) ;
 	retry exn 
     
-  let all_ids () = 
+  let all_ids ~count start = 
 
     let no_design_docs list = 
       List.filter (fun id -> not (BatString.starts_with (Id.str id) "_design/")) list
     in
 
-    let rec fetch_all_identifiers next =
-      let limit  = 500 in
-      let list   = BatStd.ok (query_all_docs next limit)in 
-      let length = List.length list in 
-      if length < limit then Run.return [no_design_docs list] else
-	match List.rev list with 
-	  | last :: others -> Run.bind begin fun tail -> 
-         	                Run.return (no_design_docs others :: tail) 
-                              end (fetch_all_identifiers (Some last))
-	  | []             -> Run.return []
-    in
+    let limit = count + 1 in
+    let list = BatStd.ok (query_all_docs start limit) in
+    let first, next = try BatList.split_at count list with _ -> list, [] in
+    let next = match next with h :: _ -> Some h | [] -> None in
+    let first = no_design_docs first in 
 
-    Run.of_call fetch_all_identifiers None |> Run.map List.concat
+    Run.return (first,next)
 
   let put id json = 
 
@@ -291,7 +285,10 @@ struct
 
   let parse id p = Database.parse (Id.to_id id) p
 
-  let all_ids () = Run.map (List.map Id.of_id) (Database.all_ids ())
+  let all_ids ~count start = 
+    Run.map 
+      (fun (list, next) -> List.map Id.of_id list, BatOption.map Id.of_id next)
+      (Database.all_ids ~count (BatOption.map Id.to_id start))
 
 end
 

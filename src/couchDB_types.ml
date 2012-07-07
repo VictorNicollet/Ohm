@@ -18,7 +18,7 @@ module type READ_TABLE = sig
   val get : id -> (#ctx, elt option) Run.t
   val parse : id -> 'a CouchDB_parser.t -> (#ctx,'a option) Run.t
 
-  val all_ids : unit -> (#ctx,id list) Run.t
+  val all_ids : count:int -> id option -> (#ctx,id list * id option) Run.t
 
 end
 
