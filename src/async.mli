@@ -106,7 +106,7 @@ end
 module Convenience : sig
 
   val foreach :
-        'ctx manager
+        'ctx # manager
     ->  string
     ->  'key Fmt.fmt
     -> ('key option -> ('ctx, 'key list * 'key option) Run.t)  

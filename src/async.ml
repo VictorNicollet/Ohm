@@ -223,7 +223,7 @@ end
 
 module Convenience = struct
 
-  let foreach (manager:'c manager) name fmt iterator action = 
+  let foreach (manager:'c # manager) name fmt iterator action = 
     let task, define = manager # declare name (Fmt.optional fmt) in
     let () = define begin fun key -> 
       let! list, next = ohm $ iterator key in
