@@ -38,6 +38,17 @@ let real_value = function
   | Json.Null      -> None
   | other               -> Some other
 
+let ( * ) a b = {
+  to_json = (fun (xa,xb) -> Json.Array [ a.to_json xa ; b.to_json xb ]) ;
+  of_json = (function 
+    | Json.Array [ ja ; jb ] -> begin 
+      match a.of_json ja, b.of_json jb with 
+	| Some xa, Some xb -> Some (xa,xb) 
+	| _      , _       -> None
+    end
+    | _ -> None)
+}
+
 module type FMT = sig
   type t 
   val of_json : Json.t -> t

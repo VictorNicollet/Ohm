@@ -13,6 +13,8 @@ val protect : ?save:(Json.t -> Json.t) -> (Json.t -> 'a) -> Json.t -> 'a option
 
 val real_value : Json.t -> Json.t option
 
+val ( * ) : 'a t -> 'b t -> ('a * 'b) t 
+
 module type FMT = sig
   type t 
   val of_json : Json.t -> t
