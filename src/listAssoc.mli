@@ -28,6 +28,8 @@ val group : ('key * 'value) list -> ('key, 'value list) t
 
 val group_stable : ('key * 'value) list -> ('key, 'value list) t
 
+val group_seq : ('key * 'value) list -> ('key, 'value list) t
+
 val of_json : (string -> 'key) -> (Json.t -> 'value) -> Json.t -> ('key,'value) t 
 
 val to_json : ('key -> string) -> ('value -> Json.t) -> ('key,'value) t -> Json.t
