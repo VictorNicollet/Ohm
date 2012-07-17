@@ -136,6 +136,17 @@ end
 *)
 val file : file:string -> mime:string -> data:string -> response -> response
 
+(** {b JSONP}: returns the provided JSON using the JSONP format. 
+
+    Any existing JSON or HTML data present in the response is removed, but JS code
+    is kept and appended to the JSONP output. Existing JSONP data is also kept
+    (which means it is possible to return several pieces of data in a single HTTP 
+    request using JSONP). 
+
+    By default, the callback is [callback]. 
+*)
+val jsonp: ?callback:string -> Json.t -> response -> response
+
 (** {b JavaScript}: attaches some JavaScript to be executed after an HTML or JSON response. 
     If the response is HTML, the view will receive the JavaScript code (turned to a string) as
     a parameter to insert it into an appropriate script tag. If the response is JSON, a [code]

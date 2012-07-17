@@ -6,8 +6,9 @@ open BatPervasives
 type response_kind = 
   | Page of (JsCode.t -> string) * JsCode.t
   | Redirect of string
-  | Json of (string * Json_type.t) list * JsCode.t
+  | Json of (string * Json.t) list * JsCode.t
   | File of string * string * string
+  | Jsonp of (string * Json.t) list * JsCode.t
       
 type response = 
     {
@@ -25,18 +26,20 @@ let redirect url response = {
 let more_javascript new_js response = { 
   response with 
     kind = begin match response.kind with 
-      | Json (j,js) -> Json (j, JsCode.seq [js;new_js])
-      | Page (p,js) -> Page (p, JsCode.seq [js;new_js])
-      | keep        -> keep 
+      | Json  (j,js) -> Json  (j, JsCode.seq [js;new_js])
+      | Page  (p,js) -> Page  (p, JsCode.seq [js;new_js])
+      | Jsonp (j,js) -> Jsonp (j, JsCode.seq [js;new_js])
+      | keep         -> keep 
     end
 }
   
 let javascript new_js response = { 
   response with 
     kind = begin match response.kind with 
-      | Json (j,js) -> Json (j, JsCode.seq [js;new_js])
-      | Page (p,js) -> Page (p, JsCode.seq [js;new_js])
-      | _           -> Json ([], new_js)
+      | Json  (j,js) -> Json  (j, JsCode.seq [js;new_js])
+      | Page  (p,js) -> Page  (p, JsCode.seq [js;new_js])
+      | Jsonp (j,js) -> Jsonp (j, JsCode.seq [js;new_js])
+      | _            -> Jsonp ([], new_js)
     end
 }
   
@@ -53,18 +56,30 @@ let file ~file ~mime ~data response = {
 let json json response = {
   response with 
     kind = begin match response.kind with
-      | Page (_,js) -> Json (json, js)
-      | Json (f,js) -> Json (json @ f, js)
-      | _           -> Json (json, JsCode.seq [])
+      | Page  (_,js)
+      | Jsonp (_,js) -> Json (json, js)
+      | Json  (f,js) -> Json (json @ f, js)     
+      | _            -> Json (json, JsCode.seq [])
+    end
+}
+
+let jsonp ?(callback="callback") json response = {
+  response with 
+    kind = begin match response.kind with
+      | Page  (_,js)
+      | Json  (_,js) -> Jsonp ([callback,json], js)
+      | Jsonp (f,js) -> Jsonp ((callback,json) :: f, js)     
+      | _            -> Jsonp ([callback,json], JsCode.seq [])
     end
 }
   
 let page html response = {
   response with
     kind = begin match response.kind with
-      | Page (_,js) 
-      | Json (_,js) -> Page (html, js)
-      | _           -> Page (html, JsCode.seq [])
+      | Page  (_,js) 
+      | Json  (_,js)
+      | Jsonp (_,js) -> Page (html, js)
+      | _            -> Page (html, JsCode.seq [])
     end
 }
 
@@ -102,7 +117,15 @@ let process suffix (cgi : Netcgi.cgi) response =
       cgi # set_header ~set_cookies:cookies ~content_type:mime ~filename:file ();
       cgi # environment # send_output_header () ;
       ignore (out_channel # output data 0 (String.length data)) 
-      	
+ 
+    | Jsonp (jsonp,js) -> 
+      cgi # set_header ~set_cookies:cookies ~content_type:"text/javascript" ();
+      cgi # environment # send_output_header () ;
+      let code = JsCode.seq (List.map (fun (name,json) -> JsCode.make name [json]) jsonp) in
+      let full = JsCode.seq [ code ; js ] in
+      let js = JsCode.to_script full in
+      ignore (out_channel # output js 0 (String.length js)) 
+
     | Json (json,js) ->
       cgi # set_header ~set_cookies:cookies ~content_type:"application/json" ();
       cgi # environment # send_output_header () ;
