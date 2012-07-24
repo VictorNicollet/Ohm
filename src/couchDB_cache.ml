@@ -188,7 +188,7 @@ let rec get ?(force=false) ?(retries=5) key =
 	    with Not_found -> IdSet.empty in 
 	  let ids = IdSet.add key.CacheKey.id ids in 
 	  couchDB.pending <- PendingMap.add key.CacheKey.db ids couchDB.pending ;
-	  if force || PendingMap.cardinal couchDB.pending > 50 then 
+	  if force || IdSet.cardinal ids > 50 then 
 	    Run.bind (fun () -> get ~force:true ~retries:(retries-1) key) 
 	      (fetch key.CacheKey.db)
 	  else
