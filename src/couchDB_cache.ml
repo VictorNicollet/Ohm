@@ -95,12 +95,15 @@ let cache_values list =
     Run.return ()
   end Run.context
 
+let max_fetch = 30
+
 (* Fetch all pending values from a given database and store them in the cache. *)
 let fetch database = 
   Run.bind begin fun ctx -> 
     let couchDB = ctx # couchDB in 
     try let ids = PendingMap.find database couchDB.pending in
 	let ids = IdSet.fold (fun id l -> CacheKey.make database id :: l) ids [] in
+	let ids = BatList.take max_fetch ids in
 	couchDB.loading <- 
 	  List.fold_left (fun set k -> LoadSet.add k set) couchDB.loading ids ;
 	couchDB.pending <- PendingMap.remove database couchDB.pending ;	
@@ -188,7 +191,7 @@ let rec get ?(force=false) ?(retries=5) key =
 	    with Not_found -> IdSet.empty in 
 	  let ids = IdSet.add key.CacheKey.id ids in 
 	  couchDB.pending <- PendingMap.add key.CacheKey.db ids couchDB.pending ;
-	  if force || IdSet.cardinal ids > 50 then 
+	  if force || IdSet.cardinal ids >= max_fetch then 
 	    Run.bind (fun () -> get ~force:true ~retries:(retries-1) key) 
 	      (fetch key.CacheKey.db)
 	  else
