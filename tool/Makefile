@@ -1,7 +1,6 @@
-OCAMLBUILD=ocamlbuild -use-ocamlfind -lib ohm -cflags -I,../.. -lflags -I,../.. 
+OCAMLBUILD=ocamlbuild -use-ocamlfind 
 
 all: 
-	make -C ../src all
 	$(OCAMLBUILD) tool.byte
 
 distclean: 
