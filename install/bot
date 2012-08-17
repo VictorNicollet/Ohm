@@ -1,0 +1,3 @@
+#!/bin/sh
+cd ..
+www/server.real --bot
