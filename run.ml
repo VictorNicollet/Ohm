@@ -102,8 +102,10 @@ let () = List.iter (fun (src,dest) -> Install.symlink src dest) [
 
 (* Copy over files *)
 
-let () = List.iter (fun (src,dest) -> Install.copy src dest) [
-  [ ".ohm" ; "Ohm" ; "install" ; "bot" ; "run" ], [ "bot" ; "run" ]
+let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
+  [ "bot" ; "run" ] ;
+  [ "public" ; "script.js" ] ;
+  [ "public" ; "style.css" ] 
 ]
 
 (* Make files executable when appropriate *)
