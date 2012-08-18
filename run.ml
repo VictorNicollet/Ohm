@@ -1,8 +1,28 @@
+(* Ohm is © 2012 Victor Nicollet *)
+
 let error fmt = Printf.ksprintf (fun s -> print_string "[FAIL] " ; print_endline s ; exit 1) fmt 
 
+let forward () = 
+  
+  let rec find path = 
+    if (try Sys.is_directory (Filename.concat path ".ohm") with _ -> false) 
+    then path 
+    else if path = "/" then error "No project found ! Possible solution :
+ohm init <project-directory>
+cd <project-directory>
+ohm ..."  
+    else find (Filename.dirname path) 
+  in
+  
+  let root = find (Sys.getcwd ()) in
+  Sys.chdir root ;
+  let tool = List.fold_left Filename.concat root [".ohm";"Ohm";"tool";"tool.byte"] in
+  
+  match Array.to_list Sys.argv with [] -> error "Array.length Sys.argv = 0 ... what the hell ?" | _ :: args -> 
+    exit (Sys.command (String.concat " " (List.map Filename.quote (tool :: args))))
+
 let project, name = 
-  if Array.length Sys.argv <> 3 || Sys.argv.(1) <> "init" then
-    error "Usage : ohm init <project-directory>" ;
+  if Array.length Sys.argv <> 3 || Sys.argv.(1) <> "init" then forward () ;
   let path = Sys.argv.(2) in
   let name = String.uncapitalize (Filename.basename path) in 
   if Filename.is_relative path then 
@@ -104,8 +124,11 @@ let () = List.iter (fun (src,dest) -> Install.symlink src dest) [
 
 let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
   [ "bot" ; "run" ] ;
-  [ "www" ; "public" ; "script.js" ] ;
-  [ "www" ; "public" ; "style.css" ] 
+  [ "Makefile" ] ;
+  [ "ocaml" ; "myocamlbuild.ml" ] ;
+  [ "ocaml" ; "_tags" ] ;
+  [ "ocaml" ; "o.ml" ];
+  [ "ocaml" ; "main.ml" ]
 ]
 
 (* Make files executable when appropriate *)

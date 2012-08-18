@@ -17,11 +17,6 @@ let error reason explanation =
     (Sys.getcwd ())  ;
   exit (-1)
 
-let error_no_project_root () = 
-  error 
-    "Could not find project root."
-    "The project root is the directory that contains subdirectories 'www' and 'ocaml' (among others). ohm-tool should be executed at the project root, but it can sometimes find the project root on its own if executed in one of the project subdirectories." 
-
 let path_error title format path exn = 
   error title (Printf.sprintf format path (Printexc.to_string exn))  
 
@@ -31,14 +26,14 @@ let path2_error title format path1 path2 exn =
 let error_mkdir_failure = 
   path_error 
     "Could not create directory."
-    "ohm-tool needs to create directory %S, but Unix.mkdir raised an exception: '%s'"
+    "ohm needs to create directory %S, but Unix.mkdir raised an exception: '%s'"
     
 let mkdir path access = try Unix.mkdir path access with exn -> error_mkdir_failure path exn
 
 let error_is_dir = 
   path_error 
     "Could not explore directory."
-    "ohm-tool needs to make sure directory %S exists, but Sys.is_directory raised an exception: '%s'"
+    "ohm needs to make sure directory %S exists, but Sys.is_directory raised an exception: '%s'"
     
 let is_dir path = 
   try Sys.is_directory path with 
@@ -48,7 +43,7 @@ let is_dir path =
 let error_readdir = 
   path_error 
     "Could not read directory."
-    "ohm-tool needs to read the contents of directory %S, but Sys.readdir raised an exception: '%s'"
+    "ohm needs to read the contents of directory %S, but Sys.readdir raised an exception: '%s'"
 
 let readdir path = 
   try Array.to_list (Sys.readdir path) with exn -> error_readdir path exn 
@@ -56,7 +51,7 @@ let readdir path =
 let error_readfile = 
   path_error
     "Could not read file."
-     "ohm-tool needs to read the contents of file %S, but open_in_bin raised an exception: '%s'"
+     "ohm needs to read the contents of file %S, but open_in_bin raised an exception: '%s'"
 
 let readfile path = 
   try let channel = Pervasives.open_in_bin path in 
@@ -78,7 +73,7 @@ let readfile_lexbuf path f =
 let error_writefile = 
   path_error
     "Could not write file."
-     "ohm-tool needs to write the contents of file %S, but open_out_bin raised an exception: '%s'"
+     "ohm needs to write the contents of file %S, but open_out_bin raised an exception: '%s'"
 
 let putfile path contents = 
 
@@ -87,11 +82,14 @@ let putfile path contents =
     with _ -> true
   in
 
-  if should then 
+  if should then begin
     try let channel = Pervasives.open_out_bin path in 
 	Pervasives.output_string channel contents ;
 	Pervasives.close_out channel 
-    with exn -> error_writefile path exn 
+    with exn -> error_writefile path exn ;
+  end ;
+
+  should
       
 let error_parse path = function
   | Asset.ParseError pos ->
@@ -104,7 +102,7 @@ let error_parse path = function
   | exn ->  
     path_error
       "Could not parse file."
-      "ohm-tool tried to parse file %S but encountered an error: '%s'"
+      "ohm tried to parse file %S but encountered an error: '%s'"
       path exn 
       
 let system command e = 
@@ -131,28 +129,22 @@ let symlink source dest =
   with exn ->
     path2_error 
       "Could not create symlink."
-      "ohm-tool tried to create link %S to path %S but Unix.symlink encountered an error: '%s'" 
+      "ohm tried to create link %S to path %S but Unix.symlink encountered an error: '%s'" 
       source dest exn
 
 (* Find out the root of the current project, and define relevant subdirectories ------------ *)
   
 module Path = struct
 
-  let root = 
-    let rec find path = 
-      if   is_dir (Filename.concat path "www") 
-	&& is_dir (Filename.concat path "ocaml") 
-      then path 
-      else if path = "/" then error_no_project_root () 
-      else find (Filename.dirname path) 
-    in
-    find (Sys.getcwd ())
+  let root = Sys.getcwd () 
       
   let () = Unix.chdir root
 
   let ocaml   = Filename.concat root  "ocaml"
   let plugins = Filename.concat ocaml "plugins"
+  let ohm     = Filename.concat ocaml "ohm"
   let www     = Filename.concat root  "www"
+  let gen     = Filename.concat ocaml "gen"
   let assets  = Filename.concat root  "assets" 
   let build   = Filename.concat root  "_build"
   let public  = Filename.concat www   "public"
@@ -180,18 +172,22 @@ let action = ref `LocateAssets
 
 let () = Arg.parse [
 
-  "-locate-assets", Arg.Unit (fun () -> action := `LocateAssets), 
+  "locate-assets", Arg.Unit (fun () -> action := `LocateAssets), 
     "Locate and list web application assets." ;
 
-  "-assets", Arg.Unit (fun () -> action := `CompileAssets), 
-    "Compile all web application assets."
+  "assets", Arg.Unit (fun () -> action := `CompileAssets), 
+    "Compile all web application assets." ;
 
-] ignore "ohm-tool: perform an operation on your ohm-powered web app."
+  "init", Arg.Unit ignore, 
+    "Initialize a new project directory" ;
 
-(* Ensure that the build subdirectory exists and, if it does not, create it ---------------- *)
+  "build", Arg.Unit (fun () -> action := `Build),
+    "Compile the application code" ;
+  
+  "full-build", Arg.Unit (fun () -> action := `FullBuild),
+    "Equivalent to 'assets' followed by 'build'" ;
 
-let () = 
-  if not (is_dir Path.build) then mkdir Path.build 0o751
+] ignore "ohm: perform an operation on your ohm-powered web app."
 
  
 (* Listing assets (a common subroutine) ---------------------------------------------------- *)
@@ -338,7 +334,7 @@ let parsed_assets = lazy begin
   (* Generating the "assets" file *)
 
   let assets_file = 
-    "(* This file was generated by ohm-tool *)\n"
+    "(* This file was generated by ohm *)\n"
     ^ (Printf.sprintf "let css = %S\n" (Path.css_url ^ "?" ^ String.sub css_md5 0 8))
     ^ (Printf.sprintf "let js  = %S\n" (Path.js_url  ^ "?" ^ String.sub coffee_md5 0 8))
   in
@@ -348,8 +344,8 @@ let parsed_assets = lazy begin
   (* Generating all files *)
 
   List.iter (fun (path,contents) -> 
-    print_endline ("Generating " ^ path ^ " ...") ;
-    putfile path contents
+    if putfile path contents then
+      print_endline ("Generating " ^ path ^ " ...") ;
   ) generated ;
 
   if not (is_dir Path.public) then mkdir Path.public 0o751 ;
@@ -374,6 +370,22 @@ let locateAssets () =
 let compileAssets () = 
   ignore (Lazy.force parsed_assets)
 
+let build () = 
+  Sys.chdir Path.ocaml ;
+  system (String.concat " " [
+    "ocamlbuild" ;
+    "-Xs ohm" ;
+    "-use-ocamlfind" ;
+    "-lib ohm " ;
+    "-cflags -I," ^ Filename.quote Path.ohm ^ "," ^ Filename.quote Path.gen ;
+    "-lflags -I," ^ Filename.quote Path.ohm ^ "," ^ Filename.quote Path.gen ;
+    "main.byte"
+  ]) "Could not compile OCaml application" ;
+  Sys.chdir Path.root 
+    
 match !action with 
   | `LocateAssets -> locateAssets () 
   | `CompileAssets -> compileAssets () 
+  | `Build -> build () 
+  | `FullBuild -> compileAssets () ; build ()
+

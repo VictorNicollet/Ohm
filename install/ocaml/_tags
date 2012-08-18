@@ -1,0 +1,4 @@
+<*> or <**/*>: package(camlp4), syntax(camlp4o), custom-pp, package(curl), package(netcgi2), package(netclient), package(batteries), package(sha), package(netstring), package(xmlm)
+<*>: include
+<gen>: include
+<plugins/*>: include
