@@ -1,9 +1,9 @@
 let error fmt = Printf.ksprintf (fun s -> print_string "[FAIL] " ; print_endline s ; exit 1) fmt 
 
 let project, name = 
-  if Array.length Sys.argv <> 2 then
-    error "Usage : ohm-init <project-directory>" ;
-  let path = Sys.argv.(1) in
+  if Array.length Sys.argv <> 3 || Sys.argv.(1) <> "init" then
+    error "Usage : ohm init <project-directory>" ;
+  let path = Sys.argv.(2) in
   let name = String.uncapitalize (Filename.basename path) in 
   if Filename.is_relative path then 
     Filename.concat (Sys.getcwd ()) path, name 
