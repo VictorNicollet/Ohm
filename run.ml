@@ -104,8 +104,8 @@ let () = List.iter (fun (src,dest) -> Install.symlink src dest) [
 
 let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
   [ "bot" ; "run" ] ;
-  [ "public" ; "script.js" ] ;
-  [ "public" ; "style.css" ] 
+  [ "www" ; "public" ; "script.js" ] ;
+  [ "www" ; "public" ; "style.css" ] 
 ]
 
 (* Make files executable when appropriate *)
