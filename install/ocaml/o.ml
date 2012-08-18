@@ -17,12 +17,12 @@ let () =
     | `Put
     | `Reset -> "-"
     | `Bot
-    | `Web   -> "/var/log/ohm/" ^ env ^ ".log"
+    | `Web   -> "/var/log/ohm/" ^ ConfigProject.lname ^ "-" ^ env ^ ".log"
   end
 
 (* Basic databases ------------------------------------------------------------------------------------------ *)
 
-let db name = Printf.sprintf "%s-%s" env name
+let db name = Printf.sprintf "%s-%s-%s" ConfigProject.lname env name
 
 module ConfigDB = CouchDB.Convenience.Database(struct let db = db "config" end)
 module Reset    = Reset.Make(ConfigDB)
@@ -57,8 +57,8 @@ let run_async () =
 (* Action management ---------------------------------------------------------------------------------------- *)
 
 let domain = match environment with 
-  | `Prod -> "project.com"
-  | `Dev  -> "project.local"
+  | `Prod -> ConfigProject.lname ^ ".com"
+  | `Dev  -> ConfigProject.lname ^ ".local"
 
 let cookies = "." ^ domain
 

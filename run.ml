@@ -87,6 +87,17 @@ module Install = struct
   let mkexec p = 
     run "chmod u+x %s" (Filename.quote (path p))
 
+  let config () = 
+    let path = path [ "ocaml" ; "configProject.ml" ] in
+    if not (Sys.file_exists path) then
+      try let chan = open_out path in
+	  try let name = Printf.sprintf "let name = %S\nlet lname = %S\n"
+		name (String.lowercase name) in
+	      output_string chan name ;
+	      close_out chan
+	  with _ -> close_out chan
+      with _ -> error "Could not write project config file %s" path 
+	
 end
 
 (* Create the entire directory structure for the Ohm project. These operations
@@ -97,7 +108,7 @@ let () = List.iter Install.mkdir [
   [ ".ohm" ] ;
   [ "ocaml" ; "plugins" ] ;
   [ "_build" ] ;
-  [ "assets" ] ;
+  [ "assets" ; "common" ] ;
   [ "bot" ] ;
   [ "www" ; "public" ]
 ]
@@ -131,8 +142,12 @@ let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) pat
   [ "ocaml" ; "o.ml" ];
   [ "ocaml" ; "main.ml" ] ;
   [ "assets" ; "common" ; "def.adlib.ml" ] ;
-  [ "assets" ; "common" ; "en.adlib.ml" ]
+  [ "assets" ; "common" ; "en.adlib.ml" ] ;
+  [ "ocaml" ; "configProject.mli" ]
 ]
+
+(* Install the configuration file *)
+let () = Install.config ()
 
 (* Make files executable when appropriate *)
 
