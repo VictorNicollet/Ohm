@@ -97,6 +97,12 @@ module Install = struct
 	      close_out chan
 	  with _ -> close_out chan
       with _ -> error "Could not write project config file %s" path 
+
+  let make () = 
+    in_dir [] (fun () -> 
+      run "ohm assets" ;
+      run "ohm build" 
+    )
 	
 end
 
@@ -147,6 +153,7 @@ let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) pat
 ]
 
 (* Install the configuration file *)
+
 let () = Install.config ()
 
 (* Make files executable when appropriate *)
@@ -154,3 +161,7 @@ let () = Install.config ()
 let () = List.iter Install.mkexec [
   [ "bot" ; "run" ]
 ]
+
+(* Finish install by compiling the software. *)
+  
+let () = Install.make ()
