@@ -129,7 +129,9 @@ let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) pat
   [ "ocaml" ; "myocamlbuild.ml" ] ;
   [ "ocaml" ; "_tags" ] ;
   [ "ocaml" ; "o.ml" ];
-  [ "ocaml" ; "main.ml" ]
+  [ "ocaml" ; "main.ml" ] ;
+  [ "assets" ; "common" ; "def.adlib.ml" ] ;
+  [ "assets" ; "common" ; "en.adlib.ml" ]
 ]
 
 (* Make files executable when appropriate *)
