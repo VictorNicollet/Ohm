@@ -1,4 +1,4 @@
-$(OHM)=ohm # The name of the 'ohm' tool to be invoked
+OHM=ohm # The name of the 'ohm' tool to be invoked
 
 all: 
 	$(OHM) assets # Build all the assets, place them in '/_build' 
