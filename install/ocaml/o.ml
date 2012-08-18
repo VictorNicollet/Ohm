@@ -38,11 +38,11 @@ class ctx adlib = object
 end
 
 let ctx = function
-  | `FR -> new ctx Asset_AdLib.fr
+  | `EN -> new ctx Asset_AdLib.en
 
 let put action = 
   if Ohm.Util.role = `Put then 
-    ignore (Ohm.Run.eval (ctx `FR) action) 
+    ignore (Ohm.Run.eval (ctx `EN) action) 
 
 type 'a run = (ctx,'a) Run.t
 
@@ -52,7 +52,7 @@ module Async = Ohm.Async.Make(AsyncDB)
 let async : ctx Async.manager = new Async.manager
 
 let run_async () = 
-  async # run (fun () -> ctx `FR) 
+  async # run (fun () -> ctx `EN) 
 
 (* Action management ---------------------------------------------------------------------------------------- *)
 
@@ -65,7 +65,7 @@ let cookies = "." ^ domain
 let core   = Action.Convenience.single_domain_server ~cookies domain
 
 let action f req res = 
-  Run.with_context (ctx `FR) (f req res)
+  Run.with_context (ctx `EN) (f req res)
 
 let register s u a body = 
   Action.register s u a (action body)
