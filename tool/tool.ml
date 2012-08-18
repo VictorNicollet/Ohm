@@ -138,8 +138,6 @@ module Path = struct
 
   let root = Sys.getcwd () 
       
-  let () = Unix.chdir root
-
   let ocaml   = Filename.concat root  "ocaml"
   let plugins = Filename.concat ocaml "plugins"
   let ohm     = Filename.concat ocaml "ohm"
@@ -166,30 +164,6 @@ module Path = struct
 
 end
 
-(* Determine what we are expected to do ---------------------------------------------------- *)
-
-let action = ref `LocateAssets 
-
-let () = Arg.parse [
-
-  "locate-assets", Arg.Unit (fun () -> action := `LocateAssets), 
-    "Locate and list web application assets." ;
-
-  "assets", Arg.Unit (fun () -> action := `CompileAssets), 
-    "Compile all web application assets." ;
-
-  "init", Arg.Unit ignore, 
-    "Initialize a new project directory" ;
-
-  "build", Arg.Unit (fun () -> action := `Build),
-    "Compile the application code" ;
-  
-  "full-build", Arg.Unit (fun () -> action := `FullBuild),
-    "Equivalent to 'assets' followed by 'build'" ;
-
-] ignore "ohm: perform an operation on your ohm-powered web app."
-
- 
 (* Listing assets (a common subroutine) ---------------------------------------------------- *)
 
 type asset = [ `View | `Coffee | `Less | `AdLib ] 
@@ -377,15 +351,30 @@ let build () =
     "-Xs ohm" ;
     "-use-ocamlfind" ;
     "-lib ohm " ;
-    "-cflags -I," ^ Filename.quote Path.ohm ^ "," ^ Filename.quote Path.gen ;
-    "-lflags -I," ^ Filename.quote Path.ohm ^ "," ^ Filename.quote Path.gen ;
+    "-cflags -I," ^ Filename.quote (Path.ohm ^ "/") ;
+    "-lflags -I," ^ Filename.quote (Path.ohm ^ "/") ; 
     "main.byte"
   ]) "Could not compile OCaml application" ;
   Sys.chdir Path.root 
     
-match !action with 
-  | `LocateAssets -> locateAssets () 
-  | `CompileAssets -> compileAssets () 
-  | `Build -> build () 
-  | `FullBuild -> compileAssets () ; build ()
+let help () = 
+  print_endline "Usage: ohm <command>, available commands are :" ;
+  List.iter (fun (s,desc) -> 
+    print_string "  " ; 
+    print_string s ; 
+    print_string "  " ; 
+    print_endline desc)  
+    (List.sort compare 
+       [ "assets", "Compile web assets to .ml files" ;
+	 "build", "Build server application from .ml sources" ;
+	 "init", "Initialize new ohm project in in directory"
+       ])
+
+let () =
+  match 
+    if Array.length Sys.argv < 2 then None else Some Sys.argv.(1)
+  with 
+    | Some "assets" -> compileAssets ()
+    | Some "build" -> build ()
+    | _ -> help ()
 
