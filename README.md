@@ -52,4 +52,4 @@ run Ohm :
     apt-get install ocaml-nox ocaml-findlib ocamldsort ocaml-native-compilers \
         libsha-ocaml-dev libbatteries-ocaml-dev libocamlnet-ocaml-dev \
         libcurl-ocaml-dev libxmlm-ocaml-dev libapache2-mod-fastcgi make \
-        couchdb coffeescript node-less
+        couchdb coffeescript node-less supervise
