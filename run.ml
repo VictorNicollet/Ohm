@@ -100,11 +100,18 @@ module Install = struct
 
   let make () = 
     in_dir [] (fun () -> 
-      run "ohm assets" ;
-      run "ohm build" 
+      run "make" 
     )
+
+  let touch p =
+    run "touch %s" (Filename.quote (path p))
 	
 end
+
+(* Fresh install means there have been no directories or files
+   created so far. Just check whether the .install file has been created. *)
+
+let fresh = not (Sys.file_exists (path [".install"]))
 
 (* Create the entire directory structure for the Ohm project. These operations
    are all idempotent and respect data that was already created. *)
@@ -114,10 +121,13 @@ let () = List.iter Install.mkdir [
   [ ".ohm" ] ;
   [ "ocaml" ; "plugins" ] ;
   [ "_build" ] ;
-  [ "assets" ; "common" ] ;
   [ "bot" ] ;
   [ "www" ; "public" ]
 ]
+
+let () = if fresh then List.iter Install.mkdir [
+  [ "assets" ; "common" ] ;
+] 
 
 (* Load (or update) the two parts of the Ohm framework (core and plugins) from 
    the github repository. *)
@@ -140,27 +150,32 @@ let () = List.iter (fun (src,dest) -> Install.symlink src dest) [
 
 (* Copy over files *)
 
-let () = List.iter (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
-  [ "bot" ; "run" ] ;
-  [ "Makefile" ] ;
-  [ "ocaml" ; "myocamlbuild.ml" ] ;
-  [ "ocaml" ; "_tags" ] ;
-  [ "ocaml" ; "o.ml" ];
-  [ "ocaml" ; "main.ml" ] ;
-  [ "assets" ; "common" ; "def.adlib.ml" ] ;
-  [ "assets" ; "common" ; "en.adlib.ml" ] ;
-  [ "ocaml" ; "configProject.mli" ]
-]
-
+let () = if fresh then List.iter 
+    (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
+      [ "bot" ; "run" ] ;
+      [ "Makefile" ] ;
+      [ "ocaml" ; "myocamlbuild.ml" ] ;
+      [ "ocaml" ; "_tags" ] ;
+      [ "ocaml" ; "o.ml" ];
+      [ "ocaml" ; "main.ml" ] ;
+      [ "assets" ; "common" ; "def.adlib.ml" ] ;
+      [ "assets" ; "common" ; "en.adlib.ml" ] ;
+      [ "ocaml" ; "configProject.mli" ]
+    ]
+    
 (* Install the configuration file *)
 
-let () = Install.config ()
+let () = if fresh then Install.config ()
 
 (* Make files executable when appropriate *)
 
 let () = List.iter Install.mkexec [
   [ "bot" ; "run" ]
 ]
+
+(* Touch the "installed" file to avoid fresh installs from now on. *)
+
+let () = if fresh then Install.touch [".install"]
 
 (* Finish install by compiling the software. *)
   
