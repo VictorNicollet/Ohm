@@ -209,7 +209,7 @@ let help () =
 	 "build", "Build server application from .ml sources" ;
 	 "init", "Initialize new ohm project in in directory" ;
 	 "plug <plugin>", "Enable a new plugin" ;
-	 "unplug <plugin>", "Disable an existing plugin"
+	 "unplug <plugin>", "Disable an existing plugin" ;
        ])
 
 let args = BatList.drop 2 (Array.to_list Sys.argv) 

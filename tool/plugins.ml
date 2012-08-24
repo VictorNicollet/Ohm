@@ -23,7 +23,9 @@ let check_plugin plugin =
 (* Symlink plugged-in modules *)
 
 let plug_one plugin =   
-  symlink (check_plugin plugin) (Filename.concat Path.plugins plugin) 
+  let path = check_plugin plugin in 
+  symlink path (Filename.concat Path.plugins plugin) ;
+  symlink (Filename.concat path "www") (Filename.concat Path.www plugin) 
 
 let plug list = 
   List.iter plug_one list
@@ -32,7 +34,8 @@ let plug list =
 
 let unplug_one plugin = 
   let _ = check_plugin plugin in 
-  unlink (Filename.concat Path.plugins plugin) 
+  unlink (Filename.concat Path.plugins plugin) ;
+  unlink (Filename.concat Path.www plugin) 
 
 let unplug list = 
   List.iter unplug_one list
