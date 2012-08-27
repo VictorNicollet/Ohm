@@ -33,6 +33,11 @@ let project, name =
 
 let path seq = List.fold_left Filename.concat project seq   
 
+let readdir p =
+  let path = path p in 
+  try Array.to_list (Sys.readdir path) 
+  with exn -> error "Could not read directory %S : %s" path (Printexc.to_string exn)
+
 module Install = struct
 
   let prefix = ref "" 
@@ -105,7 +110,13 @@ module Install = struct
 
   let touch p =
     run "touch %s" (Filename.quote (path p))
-	
+
+  let make_plugin plugin = 
+    let p = [ ".ohm" ; "Ohm-Plugins" ; plugin ; "tool" ] in
+    let exists = try Sys.is_directory (path p) with _ -> false in 
+    if exists then 
+      run "make -C %s" (Filename.quote (path p))
+
 end
 
 (* Fresh install means there have been no directories or files
@@ -140,6 +151,10 @@ let () = List.iter (fun (path,src) -> Install.clone path src) [
 (* Build the framework *)
 
 let () = Install.run "make --quiet -C %s" (Filename.quote (path [".ohm" ; "Ohm"]))
+
+(* Build the plugins that need building. *)
+
+let () = List.iter Install.make_plugin (readdir [".ohm" ; "Ohm-Plugins"])
 
 (* Create the relevant symlinks *)
 
