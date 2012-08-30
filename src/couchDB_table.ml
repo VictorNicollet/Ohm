@@ -167,6 +167,12 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 	end
       end
     end
+
+  let rec create elt = 
+    let id = Id.gen () in
+    put id elt |> Run.bind (function 
+      | `collision -> create elt
+      | `ok -> Run.return id)
 	
   type ('ctx,'a) update = id -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
 
@@ -303,6 +309,9 @@ struct
 
   let put id elt = 
     Database.put (Id.to_id id) (Type.to_json elt) 
+
+  let create elt = 
+    Run.map Id.of_id (Database.create (Type.to_json elt))
 
   let delete id = Database.delete (Id.to_id id) 
 

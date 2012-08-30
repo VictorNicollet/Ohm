@@ -47,6 +47,8 @@ module type TABLE = sig
 
   include READ_TABLE
 
+  val create : elt -> (#ctx,id) Run.t
+
   val put    : id -> elt -> (#ctx,[> `ok | `collision]) Run.t
   val delete : id ->        (#ctx,[> `ok | `collision]) Run.t
 
