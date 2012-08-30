@@ -50,7 +50,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
      They depend on CouchDB for doing the work. *)
 
   module MyDB = CouchDB.Database(DB)
-  module MyTable = CouchDB.Table(MyDB)(Id)(Task)
+  module Tbl = CouchDB.Table(MyDB)(Id)(Task)
   module Design = struct
     module Database = MyDB
     let name = "async"
@@ -86,11 +86,9 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
     end) 
 
   let save_task delay name args = 
-    let  id   = Id.gen () in
     let! time = ohmctx (#time) in
     let  time = match delay with None -> time | Some delay -> time +. delay in 
-    let  task = Task.({ time ; calls = 0 ; name ; args }) in
-    let! _    = ohm $ MyTable.transaction id (MyTable.insert task) in
+    let! _    = ohm $ Tbl.create Task.({ time ; calls = 0 ; name ; args }) in
     return ()
 
   module TaskView = CouchDB.DocView(struct
@@ -118,7 +116,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
       let unlock   = now +. delay in
       let task     = lock unlock task in
       
-      let! result  = ohm $ MyTable.put id task in 
+      let! result  = ohm $ Tbl.Raw.put id task in 
       match result with 
 	| `collision -> find_next (retries-1)
 	| `ok        -> return $ Some (id,task)
@@ -131,7 +129,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 
     (* Specify a reschedule operation in case we're interrupted by [raise Reschedule] *)
     let  () = reschedule := (
-      let! _ = ohm $ MyTable.transaction id (MyTable.insert (unlock task)) in
+      let! _ = ohm $ Tbl.set id (unlock task) in
       return (log "Ohm.Async: reschedule %s" (Id.str id))
     )  in
 
@@ -141,7 +139,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
     in
     
     let! () = ohm $ call task.Task.args in    
-    let! _  = ohm $ MyTable.transaction id MyTable.remove in
+    let! () = ohm $ Tbl.delete id in 
     
     return None
 

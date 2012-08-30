@@ -16,6 +16,7 @@ module type READ_TABLE = sig
   type elt
 
   val get : id -> (#ctx, elt option) Run.t
+  val using : id -> (elt -> 'a) -> (#ctx,'a option) Run.t 
   val parse : id -> 'a CouchDB_parser.t -> (#ctx,'a option) Run.t
 
   val all_ids : count:int -> id option -> (#ctx,id list * id option) Run.t
@@ -28,20 +29,27 @@ module type TABLE = sig
 
   val create : elt -> (#ctx,id) Run.t
 
-  val put    : id -> elt -> (#ctx,[> `ok | `collision]) Run.t
-  val delete : id ->        (#ctx,[> `ok | `collision]) Run.t
+  val ensure : id -> elt Lazy.t -> (#ctx,elt) Run.t
 
-  type ('ctx,'a) update = id -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t 
+  val delete : id -> (#ctx,unit) Run.t
+  val delete_if : id -> (elt -> bool) -> (#ctx,unit) Run.t
 
-  val transaction : id -> (#ctx as 'ctx,'a) update -> ('ctx,'a) Run.t
+  val update : id -> (elt -> elt) -> (#ctx,unit) Run.t
 
-  val insert : elt -> (#ctx, elt) update
-  val remove : (#ctx, elt option) update 
-  val update : (elt -> elt) -> (#ctx, elt option) update
-  val ensure : elt Lazy.t -> (#ctx,elt) update
+  val set : id -> elt -> (#ctx,unit) Run.t
 
-  val remove_if : (elt -> bool) -> (#ctx, elt option) update
-  val if_exists : (elt -> 'a * [`put of elt | `keep | `delete]) -> (#ctx,'a option) update
+  module Raw : sig
+    val put    : id -> elt -> (#ctx,[> `ok | `collision]) Run.t
+    val delete : id ->        (#ctx,[> `ok | `collision]) Run.t
+    val transaction : 
+         id 
+      -> (id -> (#ctx as 'ctx,'a * [`put of elt | `keep | `delete]) Run.t)
+      -> ('ctx,'a) Run.t
+  end
+
+  type ('ctx,'a) update = elt option -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t 
+
+  val transact : id -> (#ctx as 'ctx,'a) update -> ('ctx,'a) Run.t
 
 end
 

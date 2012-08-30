@@ -27,16 +27,12 @@ struct
     > 
   end)
 
-  module MyTable = CouchDB.Table(DB)(Id)(Reset)
+  module Tbl = CouchDB.Table(DB)(Id)(Reset)
 
   let _default = Util.string_of_time (Unix.gettimeofday ()) 
 
   let _get () = 
-    let time = function
-      | Some value -> value # time
-      | None       -> _default
-    in
-    MyTable.get id |> Run.map time
+    Run.map (BatOption.default _default) (Tbl.using id (#time)) 
 
   let _initial = Run.eval (new CouchDB.init_ctx) (_get ())
 
@@ -46,12 +42,12 @@ struct
 	method t    = "rset" 
 	method time = Util.string_of_time (ctx # time) 
       end in    
-      MyTable.transaction id (MyTable.insert reset) 
+      Tbl.set id reset 
       |> Run.map (fun _ -> Util.log "Reset.perform : request sent") 
     end
 
   let resetting () = 
-    Run.eval (new CouchDB.init_ctx) (_get () |> Run.map (fun x -> x <> _initial)) 
+    Run.eval (new CouchDB.init_ctx) (_get () |> Run.map ((<>) _initial)) 
 
   let check () = 
     if resetting () then begin 

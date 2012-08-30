@@ -24,7 +24,7 @@ module Table =
       functor (Type:Fmt.FMT) -> 
 struct
   module Db = Database(C)
-  module MyTable = ImplTable.Table(Db)(Id)(Type)
+  module Tbl = ImplTable.Table(Db)(Id)(Type)
   module Design = struct
     module Database = Db
     let name = C.db

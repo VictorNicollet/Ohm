@@ -32,6 +32,12 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
       | Some doc -> Run.return (Some doc.ImplCache.json) 
     end (ImplCache.get (ImplCache.CacheKey.make database id))
 
+  let using id f = 
+    Run.map begin function 
+      | None -> None
+      | Some json -> Some (f json) 
+    end (get id) 
+
   let parse id elt_parser = 
     Run.bind begin function 
       | None     -> Run.return None
@@ -99,173 +105,162 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
 
     Run.return (first,next)
 
-  let put id json = 
-
-    let key = ImplCache.CacheKey.make database id in
-    let url = ImplCache.CacheKey.url key in
-
-    (* Extract previously available data from the cache, if any. *)
-    ImplCache.get_if_exists key |> Run.bind begin fun cached -> 
-
-      let rev, ct = 
-	match cached with None | Some None -> None, None | Some (Some cached) ->
-	  let rev = cached.ImplCache.rev in
-	  let ct = 
-	    try Some (Json.to_object (fun ~opt ~req -> req "ct") cached.ImplCache.json)
-	    with _ -> None
-	  in 
-	  rev, ct
-      in
-
-      (* Keep "ut" and "ct" timers on every object for debugging *)
-      Run.context |> Run.bind begin fun ctx ->
-
-	let update_time = Json.String (Util.string_of_time (ctx # time)) in
-	let create_time = BatOption.default update_time ct in
-
-	(* The JSON to be written to the database. *)
-	let json = 
-	  json
-  	  |> json_replace "ct" create_time
-	  |> json_replace "ut" update_time
-	  |> (match rev with 
-	    | None -> identity 
-	    | Some rev -> json_replace "_rev" (Json.String rev))
-	  |> json_replace "_id" (Id.to_json id) 
-	in
-
-	(* Send the new document to the database now. *)
-    
-	let json_str = Json.serialize json in
-
-	let rec retry retries = 
-	  try Util.logreq "PUT %s %s" url json_str ;
-	      let response = Http_client.Convenience.http_put url json_str in
-	      try let rev = 
-		    Json.unserialize response
-                    |> Json.to_object (fun ~opt ~req -> Json.to_string (req "rev"))
-		  in Run.return (`ok (Some rev))
-	      with _ -> Run.return (`ok None)
-	  with 
-	    | Http_client.Http_error (409,_) ->Run.return `collision
-	    | Http_client.Http_error (status,desc) as exn ->
-	      Util.log "CouchDB.put: `%s %s` : %d %s" url json_str status desc ;
-	      if retries <= 0 then raise exn else retry (retries-1)
-	    | Http_client.Http_protocol error as exn ->
-	      Util.log "CouchDB.put: HTTP error (%s) on %s\n%s" (Printexc.to_string error)
-		url json_str ;
-	      if retries <= 0 then raise exn else retry (retries-1)
-	    | exn -> 
-	      if retries <= 0 then raise exn else retry (retries-1)
-		
+  module Raw = struct
+      
+    let put id json = 
+      
+      let key = ImplCache.CacheKey.make database id in
+      let url = ImplCache.CacheKey.url key in
+      
+      (* Extract previously available data from the cache, if any. *)
+      ImplCache.get_if_exists key |> Run.bind begin fun cached -> 
+	
+	let rev, ct = 
+	  match cached with None | Some None -> None, None | Some (Some cached) ->
+	    let rev = cached.ImplCache.rev in
+	    let ct = 
+	      try Some (Json.to_object (fun ~opt ~req -> req "ct") cached.ImplCache.json)
+	      with _ -> None
+	    in 
+	    rev, ct
 	in
 	
-	retry 5 |> Run.bind begin function 
-	  | `collision -> Run.bind (fun () -> Run.return `collision) (ImplCache.remove key) 
-	  | `ok rev    -> Run.bind (fun () -> Run.return `ok) 
-            (ImplCache.cache_values [key,Some (ImplCache.cached_of_json json)])
+	(* Keep "ut" and "ct" timers on every object for debugging *)
+	Run.context |> Run.bind begin fun ctx ->
+	  
+	  let update_time = Json.String (Util.string_of_time (ctx # time)) in
+	  let create_time = BatOption.default update_time ct in
+	  
+	  (* The JSON to be written to the database. *)
+	  let json = 
+	    json
+  	    |> json_replace "ct" create_time
+	    |> json_replace "ut" update_time
+	    |> (match rev with 
+		| None -> identity 
+		| Some rev -> json_replace "_rev" (Json.String rev))
+	    |> json_replace "_id" (Id.to_json id) 
+	  in
+	  
+	  (* Send the new document to the database now. *)
+	  
+	  let json_str = Json.serialize json in
+	  
+	  let rec retry retries = 
+	    try Util.logreq "PUT %s %s" url json_str ;
+		let response = Http_client.Convenience.http_put url json_str in
+		try let rev = 
+		      Json.unserialize response
+                      |> Json.to_object (fun ~opt ~req -> Json.to_string (req "rev"))
+		    in Run.return (`ok (Some rev))
+		with _ -> Run.return (`ok None)
+	    with 
+	      | Http_client.Http_error (409,_) ->Run.return `collision
+	      | Http_client.Http_error (status,desc) as exn ->
+		Util.log "CouchDB.put: `%s %s` : %d %s" url json_str status desc ;
+		if retries <= 0 then raise exn else retry (retries-1)
+	      | Http_client.Http_protocol error as exn ->
+		Util.log "CouchDB.put: HTTP error (%s) on %s\n%s" (Printexc.to_string error)
+		  url json_str ;
+		if retries <= 0 then raise exn else retry (retries-1)
+	      | exn -> 
+		if retries <= 0 then raise exn else retry (retries-1)
+		  
+	  in
+	  
+	  retry 5 |> Run.bind begin function 
+	    | `collision -> Run.bind (fun () -> Run.return `collision) (ImplCache.remove key) 
+	    | `ok rev    -> Run.bind (fun () -> Run.return `ok) 
+              (ImplCache.cache_values [key,Some (ImplCache.cached_of_json json)])
+	  end
 	end
       end
-    end
 
+    let delete id = 
+    
+      let key = ImplCache.CacheKey.make database id in
+      
+      let rec remove ?(retries=5) rev = 
+	let url = ImplCache.CacheKey.url key ^ "?rev=" ^ rev in
+	try Util.logreq "DELETE %s" url ;
+	    ignore (Http_client.Convenience.http_delete url) ;
+	    Run.bind (fun () -> Run.return `ok) (ImplCache.cache_values [key,None])
+	with 
+	  | Http_client.Http_error (409,_) -> 
+	    Run.bind (fun () -> Run.return `collision) (ImplCache.remove key)
+	  | Http_client.Http_error (status,desc) as exn ->
+	    Util.log "CouchDB.delete: `%s` : %d %s" url status desc ;
+	    if retries <= 0 then raise exn else remove ~retries:(retries-1) rev
+	  | exn -> 
+	    Util.log "CouchDB.delete : `%s` : %s" url (Printexc.to_string exn) ;
+	    if retries <= 0 then raise exn else remove ~retries:(retries-1) rev
+	      
+      in
+      
+      ImplCache.get key |> Run.bind begin function
+	| None     -> Run.return `ok 
+	| Some doc -> match doc.ImplCache.rev with 
+	    | None -> Run.bind (fun () -> Run.return `ok) (ImplCache.cache_values [key,None])
+	    | Some rev -> remove rev
+      end
+
+    let transaction id update = 
+      
+      let rec loop retries = 
+	if retries <= 0 then raise ImplCache.CouchDB_error else
+	  update id |> Run.bind begin fun (returned,operation) -> 
+	    
+	    let confirm action = 
+	      action |> Run.bind begin function 
+		| `ok        -> Run.return returned
+		| `collision -> Run.bind (fun _ -> loop (retries-1)) (get id)
+	      end
+	    in
+	    
+	    match operation with 
+	      | `keep    -> Run.return returned
+	      | `put doc -> confirm (put id doc)
+	      | `delete  -> confirm (delete id)
+	  end
+      in
+      
+      (* Try the transaction this many times *)
+      loop 10
+	
+  end
+	  
   let rec create elt = 
     let id = Id.gen () in
-    put id elt |> Run.bind (function 
+    Raw.put id elt |> Run.bind (function 
       | `collision -> create elt
       | `ok -> Run.return id)
 	
-  type ('ctx,'a) update = id -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
+  type ('ctx,'a) update = elt option -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
+
+  let transact id update = 
+    Raw.transaction id (get |- Run.bind update)
+
+  let ensure id eval = 
+    transact id (function 
+      | Some obj -> Run.return (obj,`keep)
+      | None     -> let obj = Lazy.force eval in 
+		    Run.return (obj,`put obj))
 
   let delete id = 
-    
-    let key = ImplCache.CacheKey.make database id in
-    
-    let rec remove ?(retries=5) rev = 
-      let url = ImplCache.CacheKey.url key ^ "?rev=" ^ rev in
-      try Util.logreq "DELETE %s" url ;
-	  ignore (Http_client.Convenience.http_delete url) ;
-	  Run.bind (fun () -> Run.return `ok) (ImplCache.cache_values [key,None])
-      with 
-	| Http_client.Http_error (409,_) -> 
-	  Run.bind (fun () -> Run.return `collision) (ImplCache.remove key)
-	| Http_client.Http_error (status,desc) as exn ->
-	  Util.log "CouchDB.delete: `%s` : %d %s" url status desc ;
-	  if retries <= 0 then raise exn else remove ~retries:(retries-1) rev
-	| exn -> 
-	  Util.log "CouchDB.delete : `%s` : %s" url (Printexc.to_string exn) ;
-	  if retries <= 0 then raise exn else remove ~retries:(retries-1) rev
+    Raw.transaction id (fun _ -> Run.return ((),`delete))
 
-    in
+  let delete_if id pred = 
+    transact id (function 
+      | Some e when pred e -> Run.return ((),`delete)
+      | _ -> Run.return ((),`keep))
 
-    ImplCache.get key |> Run.bind begin function
-      | None     -> Run.return `ok 
-      | Some doc -> match doc.ImplCache.rev with 
-	  | None     -> Run.bind (fun () -> Run.return `ok) (ImplCache.cache_values [key,None])
-	  | Some rev -> remove rev
-    end
+  let update id f = 
+    transact id (function 
+      | Some e -> Run.return ((),`put (f e))
+      | None   -> Run.return ((),`keep))
 
-  let transaction id update = 
-    
-    let rec loop retries = 
-      if retries <= 0 then raise ImplCache.CouchDB_error else
-	update id |> Run.bind begin fun (returned,operation) -> 
-
-	  let confirm action = 
-	    action |> Run.bind begin function 
-	      | `ok        -> Run.return returned
-	      | `collision -> Run.bind (fun _ -> loop (retries-1)) (get id)
-	    end
-	  in
-	 
-	  match operation with 
-	    | `keep    -> Run.return returned
-	    | `put doc -> confirm (put id doc)
-	    | `delete  -> confirm (delete id)
-	end
-    in
-    
-    (* Try the transaction this many times *)
-    loop 10
-
-  (* These are mere shortcuts that don't depend on the nature of the
-     monad. You could write them without knowing how the monad is implemented. *)
-      
-  let insert elt =
-    let m = Run.return (elt, `put elt) in
-    fun _ -> m
-
-  let remove id = 
-    Run.map (fun e -> e, `delete) (get id)
-     
-  let update f id = 
-    let apply = function 
-      | None -> None, `keep
-      | Some e -> let e' = f e in
-		  Some e', `put e'
-    in
-    Run.map apply (get id)
-
-  let ensure elt id = 
-    let ensure = function
-      | None -> let elt = Lazy.force elt in elt, `put elt
-      | Some e -> e, `keep
-    in
-    Run.map ensure (get id)
-
-  let remove_if cond id = 
-    let rm opt =
-      opt, match opt with 
-	| None -> `keep
-	| Some e -> if cond e then `delete else `keep
-    in
-    Run.map rm (get id)
-
-  let if_exists f id = 
-    let act = function
-      | None -> None, `keep
-      | Some e -> let r, o = f e in Some r, o
-    in
-    Run.map act (get id)
+  let set id elt = 
+    Raw.transaction id (fun _ -> Run.return ((),`put elt))
 
 end
 
@@ -289,6 +284,12 @@ struct
 
   let get id = Database.parse (Id.to_id id) elt_parser
 
+  let using id f = 
+    Run.map begin function 
+      | None -> None
+      | Some elt -> Some (f elt)
+    end (get id) 
+
   let parse id p = Database.parse (Id.to_id id) p
 
   let all_ids ~count start = 
@@ -307,66 +308,58 @@ struct
 
   include ReadTable(Database)(Id)(Type)
 
-  let put id elt = 
-    Database.put (Id.to_id id) (Type.to_json elt) 
+  module Raw = struct
+
+    let put id elt = Database.Raw.put (Id.to_id id) (Type.to_json elt) 
+    let delete  id = Database.Raw.delete (Id.to_id id) 
+
+    let transaction id update = 
+      Database.Raw.transaction (Id.to_id id) begin fun id ->
+	let translate (result,action) = 
+	  let action = match action with
+	    | `keep -> `keep
+	    | `delete -> `delete
+	    | `put elt -> `put (Type.to_json elt)
+	  in ( result, action )
+	in
+	Run.map translate (update (Id.of_id id))
+      end
+
+  end
+ 
+  type ('ctx,'a) update = elt option -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
+  
+  let transact id update = 
+
+    let update json = 
+      Run.map 
+	(function 
+	  | x, `put elt -> (x,`put (Type.to_json elt))
+	  | x, `keep    -> (x,`keep)
+	  | x, `delete  -> (x,`delete))
+	(update (BatOption.map Type.of_json json)) 
+    in
+
+    Database.transact (Id.to_id id) update
 
   let create elt = 
     Run.map Id.of_id (Database.create (Type.to_json elt))
 
-  let delete id = Database.delete (Id.to_id id) 
+  let ensure id eval = 
+    transact id (function 
+      | Some obj -> Run.return (obj,`keep)
+      | None     -> let obj = Lazy.force eval in 
+		    Run.return (obj,`put obj))
+  let delete id = 
+    Database.delete (Id.to_id id) 
 
-  type ('ctx,'a) update = id -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
+  let delete_if id pred = 
+    Database.delete_if (Id.to_id id) (Type.of_json |- pred)
 
-  let transaction id update = 
-    Database.transaction (Id.to_id id) begin fun id ->
-      let translate (result,action) = 
-	let action = match action with
-	  | `keep -> `keep
-	  | `delete -> `delete
-	  | `put elt -> `put (Type.to_json elt)
-	in ( result, action )
-      in
-      Run.map translate (update (Id.of_id id))
-    end
+  let update id f = 
+    Database.update (Id.to_id id) (Type.of_json |- f |- Type.to_json) 
 
-  (* These are mere shortcuts that don't depend on the nature of the
-     monad. You could write them without knowing how the monad is implemented. *)
-      
-  let insert elt =
-    let m = Run.return (elt, `put elt) in
-    fun _ -> m
-
-  let remove id = 
-    Run.map (fun e -> e, `delete) (get id)
-
-  let update f id = 
-    let apply = function 
-      | None -> None, `keep
-      | Some e -> let e' = f e in
-		  Some e', `put e'
-    in
-    Run.map apply (get id)
-
-  let ensure elt id = 
-    let ensure = function
-      | None -> let elt = Lazy.force elt in elt, `put elt
-      | Some e -> e, `keep
-    in
-    Run.map ensure (get id)      
-
-  let remove_if cond id = 
-    let rm opt =
-      opt, match opt with 
-	| None -> `keep
-	| Some e -> if cond e then `delete else `keep
-    in
-    Run.map rm (get id)
-
-  let if_exists f id = 
-    let act = function
-      | None -> None, `keep
-      | Some e -> let r, o = f e in Some r, o
-    in
-    Run.map act (get id)
-
+  let set id elt = 
+    Database.set (Id.to_id id) (Type.to_json elt) 
+           
 end
