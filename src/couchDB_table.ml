@@ -259,6 +259,9 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
       | Some e -> Run.return ((),`put (f e))
       | None   -> Run.return ((),`keep))
 
+  let replace id f = 
+    transact id (fun e -> Run.return ((),`put (f e)))
+
   let set id elt = 
     Raw.transaction id (fun _ -> Run.return ((),`put elt))
 
@@ -358,6 +361,9 @@ struct
 
   let update id f = 
     Database.update (Id.to_id id) (Type.of_json |- f |- Type.to_json) 
+
+  let replace id f = 
+    Database.replace (Id.to_id id) (BatOption.map Type.of_json |- f |- Type.to_json) 
 
   let set id elt = 
     Database.set (Id.to_id id) (Type.to_json elt) 

@@ -56,6 +56,7 @@ module type TABLE = sig
   val delete : id -> (#ctx,unit) Run.t
   val delete_if : id -> (elt -> bool) -> (#ctx,unit) Run.t
 
+  val replace : id -> (elt option -> elt) -> (#ctx,unit) Run.t
   val update : id -> (elt -> elt) -> (#ctx,unit) Run.t
 
   val set : id -> elt -> (#ctx,unit) Run.t
