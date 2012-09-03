@@ -18,10 +18,12 @@ ohm ..."
   Sys.chdir root ;
   let tool = List.fold_left Filename.concat root [".ohm";"Ohm";"tool";"tool.byte"] in
   
-  match Array.to_list Sys.argv with [] -> error "Array.length Sys.argv = 0 ... what the hell ?" | _ :: args -> 
-    let command = String.concat " " (List.map Filename.quote (tool :: args)) in
-    exit (Sys.command command)
-
+  match Array.to_list Sys.argv with 
+    | [] -> error "Array.length Sys.argv = 0 ... what the hell ?"
+    | _ :: args -> 
+      let command = String.concat " " (List.map Filename.quote (tool :: args)) in
+      exit (Sys.command command)
+	
 let project, name = 
   if Array.length Sys.argv <> 3 || Sys.argv.(1) <> "init" then forward () ;
   let path = Sys.argv.(2) in
