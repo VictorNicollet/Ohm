@@ -131,7 +131,7 @@ let run callback =
 	env # set_status `Internal_server_error ;
 	env # send_output_header () ;	
 	ignore (env # out_channel # output error500 0 (String.length error500)) ;
-	env # out_channel # close_out () 
+	env # out_channel # flush () 
     ) (Util.get_contents (Filename.concat Configure.root "www/500.htm")))
     callback
     
