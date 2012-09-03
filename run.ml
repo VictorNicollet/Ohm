@@ -110,6 +110,7 @@ module Install = struct
 
   let make () = 
     in_dir [] (fun () -> 
+      run "make clean" ; 
       run "make" 
     )
 
