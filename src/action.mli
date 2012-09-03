@@ -398,6 +398,9 @@ val declare :
   -> 'args Args.t
   -> ('server,'args) endpoint * (('server,'args) t -> unit) 
 
+(** Register a 404 error handling function *)
+val register_404 : (string -> string -> response -> (unit,response) Run.t) -> unit
+
 (** Run the Fastcgi server with the appropriate default configuration. *)
 val run : (Netcgi_fcgi.cgi -> unit) -> unit
   

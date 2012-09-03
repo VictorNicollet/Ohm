@@ -14,6 +14,7 @@ type ('server,'args) controller = 'server server * string * 'args Args.t
 
 type ('server,'args) t = ('server,'args) request -> response -> (unit,response) Run.t
 
+let the404   = ref None
 let declared = ref []
 let defined  = Hashtbl.create 100     
 
@@ -58,7 +59,10 @@ let register server prefix args action =
   let controller = server, prefix, args in
   dispatch_define controller action ;
   endpoint_of_controller controller 
-  
+
+let register_404 action = 
+  the404 := Some action 
+
 let find_strict protocol domain port prefix suffix cgi = 
   let list = Hashtbl.find_all defined (lowercase (path_clean prefix)) in 
   try Some (BatList.find_map (fun candidate -> candidate protocol domain port suffix cgi) list)
@@ -90,15 +94,26 @@ let dispatch cgi =
   let defport, protocol = if env # cgi_https then 443,`HTTPS else 80,`HTTP in
   let port     = BatOption.default defport (env # cgi_server_port) in
   let path     = path_clean (env # cgi_script_name) in
-  
-  let cookie_suffix, action = match find protocol domain port path cgi with 
-    | Some (cookie_suffix,action) -> cookie_suffix, action
-    | None -> raise (Action_not_found ("http://"^(env # cgi_server_name)^"/"^path))
+
+  let found cookie_suffix action = 
+    let response = Run.eval () (action empty) in      
+    process cookie_suffix cgi response 
   in
-  
-  let response = Run.eval () (action empty) in
-  
-  process cookie_suffix cgi response 
+
+  let failure () = 
+    raise (Action_not_found ("http://"^(env # cgi_server_name)^"/"^path))
+  in
+
+  let notfound handler = 
+    let response = Run.eval () (handler (env # cgi_server_name) path empty) in
+    process None cgi response 
+  in
+
+  match find protocol domain port path cgi with 
+    | Some (cookie_suffix,action) -> found cookie_suffix action 
+    | None -> match !the404 with 
+	| None -> failure () 
+	| Some handler -> notfound handler
     
 let run callback = 
   Netcgi_fcgi.run 
