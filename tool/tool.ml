@@ -223,9 +223,11 @@ let () =
   with 
     | Some "assets" -> compileAssets ()
     | Some "build" -> build ()
+    | Some "plugins.all" -> Plugins.run_all () 
     | Some "plug" -> Plugins.plug args 
     | Some "unplug" -> Plugins.unplug args
     | Some "apache-vhost" -> Config.apache_vhost args
     | Some "bot" -> Bot.tool args
+    | Some s when BatString.starts_with s "plugins." -> Plugins.parserun s args
     | _ -> help ()
 
