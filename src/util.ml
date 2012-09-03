@@ -58,21 +58,22 @@ module Logging = struct
 	prefix 
 
   let output string = 
-    let channel = open_channel () in 
-    let time = Unix.localtime (Unix.gettimeofday ()) in
-    let string =
-      Printf.sprintf "[%d/%02d/%02d %02d:%02d:%02d] %s %s\n" 
-	(time.Unix.tm_year + 1900)
-	(1 + time.Unix.tm_mon)
-	(time.Unix.tm_mday)
-	(time.Unix.tm_hour)
-	(time.Unix.tm_min)
-	(time.Unix.tm_sec)
-        (prefix ()) 
-	string 
-    in
-    output_string channel string ;
-    flush channel 
+    try let channel = open_channel () in 
+	let time = Unix.localtime (Unix.gettimeofday ()) in
+	let string =
+	  Printf.sprintf "[%d/%02d/%02d %02d:%02d:%02d] %s %s\n" 
+	    (time.Unix.tm_year + 1900)
+	    (1 + time.Unix.tm_mon)
+	    (time.Unix.tm_mday)
+	    (time.Unix.tm_hour)
+	    (time.Unix.tm_min)
+	    (time.Unix.tm_sec)
+            (prefix ()) 
+	    string 
+	in
+	output_string channel string ;
+	flush channel 
+    with _ -> () 
 
 end
 
