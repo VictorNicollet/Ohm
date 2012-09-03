@@ -41,6 +41,12 @@ let error_readdir =
     "Could not read directory."
     "ohm needs to read the contents of directory %S, but Sys.readdir raised an exception: '%s'"
 
+let file_exists path = 
+  try Sys.file_exists path with 
+    | exn -> path_error "Could not check if file exists."
+      "ohm wanted to test if file %S exists, but Sys.file_exists raised an exception: '%s'" 
+      path exn 
+
 let readdir path = 
   try Array.to_list (Sys.readdir path) with exn -> error_readdir path exn 
 
