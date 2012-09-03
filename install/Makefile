@@ -1,6 +1,7 @@
 OHM=ohm # The name of the 'ohm' tool to be invoked
 
 all: 
+	$(OHM) plugins.all # Run the DWIM mode of all installed plugin tools
 	$(OHM) assets # Build all the assets, place them in '/_build' 
 	$(OHM) build  # Build the ocaml code found in '/ocaml', generates '/ocaml/main.byte'
 
