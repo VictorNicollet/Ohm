@@ -4,6 +4,7 @@ type role = [ `Bot | `Web | `Put | `Reset ]
 
 val role : unit -> role
 
+val get_contents : string -> string option
 val get_binary_contents : string -> string option 
 val get_view_contents : string -> string option
 val get_resource_contents : string -> string option
