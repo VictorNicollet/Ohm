@@ -27,11 +27,14 @@ ohm ..."
 let project, name = 
   if Array.length Sys.argv <> 3 || Sys.argv.(1) <> "init" then forward () ;
   let path = Sys.argv.(2) in
+  let cwd  = Sys.getcwd () in
+  let path = 
+    if path = ".." then Filename.dirname cwd else
+      if path = "." then cwd else 
+	if Filename.is_relative path then Filename.concat cwd path else path 
+  in 
   let name = String.uncapitalize (Filename.basename path) in 
-  if Filename.is_relative path then 
-    Filename.concat (Sys.getcwd ()) path, name 
-  else
-    path, name 
+  path, name
 
 let path seq = List.fold_left Filename.concat project seq   
 
