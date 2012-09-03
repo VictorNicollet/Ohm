@@ -39,3 +39,25 @@ let unplug_one plugin =
 
 let unplug list = 
   List.iter unplug_one list
+
+(* Run a single plugin, with arguments. *)
+
+let run plugin args = 
+  let path = check_plugin plugin in 
+  let comm = String.concat " "
+    (List.map Filename.quote (Filename.concat path "tool/run" :: args))
+  in
+  system comm (Printf.sprintf "Could not run plugin tool '%s'" plugin)
+
+let parserun plugin args = 
+  let name = BatString.tail plugin (String.length "plugins.") in
+  run name args
+
+(* Run all plugins that have a tool enabled, in DWIM mode. *)
+
+let run_all () = 
+  let plugins = readdir Path.plugins in
+  let tools = List.filter (fun plugin -> 
+    file_exists Filename.(concat (concat Path.plugins plugin) "tool/run")
+  ) plugins in 
+  List.iter (fun plugin -> run plugin ["dwim"]) tools
