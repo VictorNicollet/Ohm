@@ -210,7 +210,9 @@ let help () =
 	 "init", "Initialize new ohm project in in directory" ;
 	 "plug <plugin>", "Enable a new plugin" ;
 	 "unplug <plugin>", "Disable an existing plugin" ;
-	 "apache-vhost", "Output apache VHOST configuration on stdout" 
+	 "apache-vhost", "Output apache VHOST configuration on stdout" ;
+	 "bot start", "Start the asynchronous processing bot." ;
+	 "bot stop", "Stop the asynchronous processing bot."
        ])
 
 let args = BatList.drop 2 (Array.to_list Sys.argv) 
@@ -224,5 +226,6 @@ let () =
     | Some "plug" -> Plugins.plug args 
     | Some "unplug" -> Plugins.unplug args
     | Some "apache-vhost" -> Config.apache_vhost args
+    | Some "bot" -> Bot.tool args
     | _ -> help ()
 

@@ -109,7 +109,7 @@ let system command e =
 	  (Printf.sprintf "The command %S returned error code %d" command result) 
   with exn ->
     error e
-      (Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn)) 	  
+      (Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn))
 
 let lessc from into = 
   system ("lessc -x " ^ Filename.quote from ^ " > " ^ Filename.quote into) 
