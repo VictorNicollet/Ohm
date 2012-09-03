@@ -108,9 +108,9 @@ module Install = struct
 	  with _ -> close_out chan
       with _ -> error "Could not write project config file %s" path 
 
-  let make () = 
+  let make fresh = 
     in_dir [] (fun () -> 
-      run "make clean" ; 
+      if not fresh then run "make clean" ; 
       run "make" 
     )
 
@@ -209,4 +209,4 @@ let () = if fresh then Install.touch [".install"]
 
 (* Finish install by compiling the software. *)
   
-let () = Install.make ()
+let () = Install.make fresh
