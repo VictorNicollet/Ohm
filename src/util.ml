@@ -40,15 +40,22 @@ module Logging = struct
 	  chanref := Some chan ; chan
 	| Some chan -> chan 
 
-  let prefix  = 
-    Printf.sprintf "[%s:%d]" 
-      (match !_role with 
-	| None        -> "---"
-	| Some `Reset -> "RST"
-	| Some `Bot   -> "BOT"
-	| Some `Web   -> "WEB"
-	| Some `Put   -> "PUT")
-      pid 
+  let prefix = 
+    let cache = ref None in 
+    fun () ->
+      match !cache with Some prefix -> prefix | None ->
+	let prefix = 
+	  Printf.sprintf "[%s:%d]" 
+	    (match !_role with 
+	      | None        -> "---"
+	      | Some `Reset -> "RST"
+	      | Some `Bot   -> "BOT"
+	      | Some `Web   -> "WEB"
+	      | Some `Put   -> "PUT")
+	    pid 
+	in
+	if !_role <> None then cache := Some prefix ;
+	prefix 
 
   let output string = 
     let channel = open_channel () in 
@@ -61,7 +68,7 @@ module Logging = struct
 	(time.Unix.tm_hour)
 	(time.Unix.tm_min)
 	(time.Unix.tm_sec)
-        prefix 
+        (prefix ()) 
 	string 
     in
     output_string channel string ;
