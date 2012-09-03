@@ -108,8 +108,9 @@ module Install = struct
 	  with _ -> close_out chan
       with _ -> error "Could not write project config file %s" path 
 
-  let make () = 
+  let make fresh = 
     in_dir [] (fun () -> 
+      if not fresh then run "make clean" ; 
       run "make" 
     )
 
@@ -143,6 +144,7 @@ let () = List.iter Install.mkdir [
 
 let () = if fresh then List.iter Install.mkdir [
   [ "assets" ; "common" ] ;
+  [ "assets" ; "errorPage" ];
 ] 
 
 (* Load (or update) the two parts of the Ohm framework (core and plugins) from 
@@ -178,9 +180,16 @@ let () = if fresh then List.iter
       [ "ocaml" ; "_tags" ] ;
       [ "ocaml" ; "o.ml" ];
       [ "ocaml" ; "main.ml" ] ;
+      [ "ocaml" ; "cErrorPage.mli" ] ;
+      [ "ocaml" ; "cErrorPage.ml" ] ;
       [ "ocaml" ; "configProject.mli" ] ;
       [ "assets" ; "common" ; "def.adlib.ml" ] ;
       [ "assets" ; "common" ; "en.adlib.ml" ] ;
+      [ "assets" ; "common" ; "style.css" ] ;
+      [ "assets" ; "errorPage" ; "error404.htm" ] ;
+      [ "assets" ; "errorPage" ; "style.css" ] ;
+      [ "assets" ; "errorPage" ; "def.adlib.ml" ] ;
+      [ "assets" ; "errorPage" ; "en.adlib.ml" ] ;
       [ "www" ; "500.htm" ] 
     ]
     
@@ -200,4 +209,4 @@ let () = if fresh then Install.touch [".install"]
 
 (* Finish install by compiling the software. *)
   
-let () = Install.make ()
+let () = Install.make fresh

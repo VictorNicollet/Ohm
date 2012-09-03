@@ -143,6 +143,10 @@ let server = Action.Convenience.single_domain_server ~cookies domain
 *)
 let action f req res = Run.with_context (ctx `EN) (f req res) 
 
+(** Defines the 404 error *)
+let register_404 f = Action.register_404 
+  (fun server page res -> Run.with_context (ctx `EN) (f server page res))
+
 (** Bind a new action, providing the body to be executed. This 
     returns an endpoint which can be used to generate URLs. 
 *)

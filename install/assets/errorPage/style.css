@@ -1,0 +1,46 @@
+body.error-page {
+
+  overflow: hidden;
+  margin: 0;
+  background-color: #EEE;
+  font-family: "Open Sans", Verdana, Sans-serif;
+  color: #333;
+  
+  h1 {
+    margin: 16px 0 32px 0;
+  }
+
+  h1 span {
+    padding: 10px 0;
+    width: 800px;
+    margin: auto;
+    display: block;
+    border-bottom: 1px solid #AAA;
+  }
+
+  p {
+    width: 700px;
+    margin: 1em auto;
+    padding-right: 100px;
+    font-size: 17px;
+  }
+
+  p.foot {
+    width: 780px;
+    margin-top: 60px;
+    padding: 10px;
+    border-top: 1px solid #CCC;
+    font-size: 14px;
+    color: #888;
+    text-align: center;
+  }
+
+  a {
+    color: #68D;
+    text-decoration: none;
+  }
+
+  p.foot a {
+    color: #8AF; 
+  }
+}
