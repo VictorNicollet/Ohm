@@ -181,7 +181,7 @@ let () = if fresh then List.iter
       [ "ocaml" ; "configProject.mli" ] ;
       [ "assets" ; "common" ; "def.adlib.ml" ] ;
       [ "assets" ; "common" ; "en.adlib.ml" ] ;
-      [ "www" ; "500.htm" ]
+      [ "www" ; "500.htm" ] 
     ]
     
 (* Install the configuration file *)
