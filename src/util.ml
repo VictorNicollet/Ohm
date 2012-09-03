@@ -4,20 +4,26 @@ type role = [ `Bot | `Web | `Put | `Reset ]
 
 let pid   = Unix.getpid ()
 
-let role =
-  let bot     = ref false 
-  and put     = ref false 
-  and cgi     = ref false 
-  and reset   = ref false in 
-  Arg.parse [
-    "--reset", Arg.Set reset, "force other processes to restart" ;
-    "--cgi",   Arg.Set cgi,   "run as FastCGI (default)" ;
-    "--put",   Arg.Set put,   "run as view/i18n uploader" ;
-    "--bot",   Arg.Set bot,   "run as bot" ;
-  ] (fun _ -> ()) "Start an instance of the Ohm server" ;
-  if !bot then `Bot else 
-    if !put then `Put else
+let _role = ref None
+
+let role () =
+  let role = 
+    let bot     = ref false 
+    and put     = ref false 
+    and cgi     = ref false 
+    and reset   = ref false in 
+    Arg.parse [
+      "--reset", Arg.Set reset, "force other processes to restart" ;
+      "--cgi",   Arg.Set cgi,   "run as FastCGI (default)" ;
+      "--put",   Arg.Set put,   "run as view/i18n uploader" ;
+      "--bot",   Arg.Set bot,   "run as bot" ;
+    ] (fun _ -> ()) "Start an instance of the Ohm server" ;
+    if !bot then `Bot else 
+      if !put then `Put else
 	if !reset then `Reset else `Web
+  in
+  _role := Some role ;
+  role 
 
 module Logging = struct
 
@@ -36,11 +42,12 @@ module Logging = struct
 
   let prefix  = 
     Printf.sprintf "[%s:%d]" 
-      (match role with 
-	| `Reset -> "RESET"
-	| `Bot   -> "BOT"
-	| `Web   -> "WEB"
-	| `Put   -> "PUT")
+      (match !_role with 
+	| None        -> "---"
+	| Some `Reset -> "RST"
+	| Some `Bot   -> "BOT"
+	| Some `Web   -> "WEB"
+	| Some `Put   -> "PUT")
       pid 
 
   let output string = 
@@ -81,7 +88,6 @@ let memoize f =
     try Hashtbl.find h x with Not_found -> 
       let y = f x in Hashtbl.add h x y ; y
 
-
 let get_binary_contents full = 
   try 
     let chan = open_in_bin full in 
@@ -98,7 +104,6 @@ let get_binary_contents full =
     | exn ->
       log "Util.get_contents: could not open %s (%s)" full (Printexc.to_string exn);
       None
-
 
 let urlencode str = 
   let regexp = Str.regexp "[^-a-zA-Z0-9$_.+!*'(),]" in

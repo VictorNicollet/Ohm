@@ -4,6 +4,14 @@ open Ohm
 open Ohm.Universal
 open BatPervasives
 
+(** {1 Instance role} *)
+
+(** The role of the current instance. This value can be used to only perform 
+    some actions in a certain context, such as the web server or the asynchronous 
+    bot. 
+*)
+let role = Util.role () 
+
 (** {1 Environment and basic configuration} *)
 
 (** Available environments. These represent the contexts in which the 
@@ -24,7 +32,7 @@ let env = match environment with
 
 (** The full absolute path to the log file.
 *)
-let logpath = match Ohm.Util.role with 
+let logpath = match role with 
   | `Put
   | `Reset -> None
   | `Bot
@@ -92,7 +100,7 @@ module Reset    = Reset.Make(ConfigDB)
 (** Run an action when the instance is running in [`Put] mode. 
 *)
 let put action = 
-  if Ohm.Util.role = `Put then 
+  if role = `Put then 
     ignore (Ohm.Run.eval (ctx `EN) action) 
 
 (** {1 Asynchronous tasks} *)

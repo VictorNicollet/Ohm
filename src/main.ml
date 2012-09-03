@@ -4,7 +4,7 @@ module Make =
   functor (Reset:Reset.RESET) ->
 struct
 
-  let run async = 
+  let run ?async role = 
 
     let web_loop () = 
       if not (Reset.resetting ()) then 
@@ -39,7 +39,7 @@ struct
 	loop_check () 
     in
       	
-    match Util.role with
+    match role with
       | `Web   -> web_loop ()
       | `Bot   -> bot_loop ()
       | `Put   -> CouchDB.compile_views ()

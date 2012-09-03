@@ -2,7 +2,7 @@
 
 type role = [ `Bot | `Web | `Put | `Reset ]
 
-val role : role
+val role : unit -> role
 
 val get_binary_contents : string -> string option 
 val get_view_contents : string -> string option
