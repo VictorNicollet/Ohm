@@ -101,7 +101,7 @@ let dispatch cgi =
   in
 
   let failure () = 
-    raise (Action_not_found ("http://"^(env # cgi_server_name)^"/"^path))
+    raise (Action_not_found ("//"^(env # cgi_server_name)^"/"^path))
   in
 
   let notfound handler = 
@@ -121,6 +121,18 @@ let run callback =
       Netcgi.default_config with Netcgi.permitted_input_content_types = 
 	[ "application/json" ; "multipart/form-data" ; "application/x-www-form-urlencoded" ] 
     }
+    ~exn_handler:(fun env f ->
+      try f () with exn ->
+	let path   = path_clean (env # cgi_script_name) in
+	let server = env # cgi_server_name in
+	let http   = if env # cgi_https then "https" else "http" in
+	let oldurl = Printf.sprintf "%s://%s/%s" http server path in
+	let url    = Printf.sprintf "%s://%s/500.htm" http server in
+	Util.log "FAIL %s : %s" oldurl (Printexc.to_string exn) ;
+	env # set_status `Internal_server_error ;
+	env # set_output_header_field "Location" url ;
+	env # send_output_header () ;	
+    )
     callback
     
 module Convenience = struct
