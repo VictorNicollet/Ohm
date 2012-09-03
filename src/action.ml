@@ -120,19 +120,19 @@ let run callback =
     ~config:{
       Netcgi.default_config with Netcgi.permitted_input_content_types = 
 	[ "application/json" ; "multipart/form-data" ; "application/x-www-form-urlencoded" ] 
-    }
-    ~exn_handler:(fun env f ->
+    }    
+    ?exn_handler:(BatOption.map (fun error500 env f ->
       try f () with exn ->
 	let path   = path_clean (env # cgi_script_name) in
 	let server = env # cgi_server_name in
 	let http   = if env # cgi_https then "https" else "http" in
-	let oldurl = Printf.sprintf "%s://%s/%s" http server path in
-	let url    = Printf.sprintf "%s://%s/500.htm" http server in
-	Util.log "FAIL %s : %s" oldurl (Printexc.to_string exn) ;
+	let url    = Printf.sprintf "%s://%s/%s" http server path in
+	Util.log "FAIL %s : %s" url (Printexc.to_string exn) ;
 	env # set_status `Internal_server_error ;
-	env # set_output_header_field "Location" url ;
 	env # send_output_header () ;	
-    )
+	ignore (env # out_channel # output error500 0 (String.length error500)) ;
+	env # out_channel # close_out () 
+    ) (Util.get_contents (Filename.concat Configure.root "www/500.htm")))
     callback
     
 module Convenience = struct
