@@ -17,9 +17,9 @@ let apache_vhost args =
   RewriteRule .* /server.real [L,QSA]
 
   DocumentRoot %s
-  <Direcvtory %s>
+  <Directory %s>
     AllowOverride None
-    Order allow, deny
+    Order allow,deny
     allow from all
   </Directory>
 
