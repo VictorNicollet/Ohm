@@ -196,7 +196,16 @@ let build () =
     "main.byte"
   ]) "Could not compile OCaml application" ;
   Sys.chdir Path.root 
-    
+
+let clean () = 
+  if is_dir (Filename.concat Path.ocaml "_build") then
+    system (Printf.sprintf "rm -r %s" Filename.(quote (concat Path.ocaml "_build"))) 
+      "Could not remove ocamlbuild files " ;
+  if is_dir Path.build then
+    system (Printf.sprintf "rm -r %s" Filename.(quote Path.build))
+      "Could not remove intermediary files " ;
+  mkdir Path.build 0o755
+  
 let help () = 
   print_endline "Usage: ohm <command>, available commands are :" ;
   List.iter (fun (s,desc) -> 
@@ -207,6 +216,7 @@ let help () =
     (List.sort compare 
        [ "assets", "Compile web assets to .ml files" ;
 	 "build", "Build server application from .ml sources" ;
+	 "clean", "Clean up all build files" ;
 	 "init", "Initialize new ohm project in in directory" ;
 	 "plug <plugin>", "Enable a new plugin" ;
 	 "unplug <plugin>", "Disable an existing plugin" ;
@@ -228,6 +238,7 @@ let () =
     | Some "unplug" -> Plugins.unplug args
     | Some "apache-vhost" -> Config.apache_vhost args
     | Some "bot" -> Bot.tool args
+    | Some "clean" -> clean () 
     | Some s when BatString.starts_with s "plugins." -> Plugins.parserun s args
     | _ -> help ()
 
