@@ -103,6 +103,35 @@ let put action =
   if role = `Put then 
     ignore (Ohm.Run.eval (ctx `EN) action) 
 
+(** {1 Rendering a page} *)
+
+(** The CSS files used by all the pages rendered using {!val:page}. This
+    should usually include [Asset.css], which is the CSS file generated
+    by the asset pipeline.
+*)
+let common_css = [
+  Asset.css
+]
+
+(** The Javascript files used by all the pages rendered using {!val:page}.
+    This should usually include [Asset.js], which is the CSS file generated
+    by the asset pipeline, as well as jQuery.
+*)
+let common_js = [
+  "https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js" ;
+  Asset.js 
+]
+
+(** Rendering a page. The caller may provide additional CSS and javascript
+    files to be added. 
+    
+    Be aware that many plugins rely on this function being defined.
+*)
+let page ?(css=[]) ?(js=[]) ?head ?favicon ?body_classes ~title writer =
+  let css = common_css @ css in
+  let js  = common_js  @ js  in
+  Ohm.Html.print_page ~css ~js ?head ?favicon ?body_classes ~title writer
+
 (** {1 Asynchronous tasks} *)
 
 (** The Async module. Instead of using this module directly, use the
