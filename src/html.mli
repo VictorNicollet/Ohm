@@ -27,7 +27,7 @@ module Convenience : sig
 
 end
 
-val print_page : 
+type renderer = 
      ?css:string list
   -> ?js:string list
   -> ?head:string
@@ -37,3 +37,5 @@ val print_page :
   -> writer
   -> JsCode.t 
   -> string
+
+val print_page : renderer

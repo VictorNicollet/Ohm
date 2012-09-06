@@ -82,6 +82,18 @@ module Convenience = struct
 
 end
 
+type renderer = 
+     ?css:string list
+  -> ?js:string list
+  -> ?head:string
+  -> ?favicon:string
+  -> ?body_classes:string list
+  -> title:string
+  -> writer
+  -> JsCode.t 
+  -> string
+
+
 let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title writer more_js = 
   
   let html   = create () in
