@@ -93,6 +93,15 @@ type renderer =
   -> JsCode.t 
   -> string
 
+type ('ctx) ctxrenderer = 
+     ?css:string list
+  -> ?js:string list
+  -> ?head:string
+  -> ?favicon:string
+  -> ?body_classes:string list
+  -> title:string
+  -> writer
+  -> ('ctx,(JsCode.t -> string)) Run.t
 
 let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title writer more_js = 
   
@@ -145,3 +154,6 @@ let print_page ?(css=[]) ?(js=[]) ?(head="") ?favicon ?(body_classes=[]) ~title 
   (* Return the resulting string *)
 
   Buffer.contents buffer
+
+let print_page_ctx ?css ?js ?head ?favicon ?body_classes ~title writer = 
+  Run.return (print_page ?css ?js ?head ?favicon ?body_classes ~title writer) 
