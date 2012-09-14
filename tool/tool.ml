@@ -167,12 +167,12 @@ let parsed_assets = lazy begin
   (* Compiling LESS CSS and making a public symlink. *)
 
   lessc Path.less Path.css ;
-  symlink Path.css Path.css_sym ;
+  Publish.publish Path.css Path.css_url ;
   
   (* Compiling CoffeeScript and making a public symlink. *)
 
   coffeescript Path.coffee Path.js ;
-  symlink Path.js Path.js_sym ;
+  Publish.publish Path.js Path.js_url ;
 
 end
 
@@ -222,7 +222,8 @@ let help () =
 	 "unplug <plugin>", "Disable an existing plugin" ;
 	 "apache-vhost", "Output apache VHOST configuration on stdout" ;
 	 "bot start", "Start the asynchronous processing bot." ;
-	 "bot stop", "Stop the asynchronous processing bot."
+	 "bot stop", "Stop the asynchronous processing bot." ;
+	 "publish", "Make a file or list of files public" ;
        ])
 
 let args = BatList.drop 2 (Array.to_list Sys.argv) 
@@ -239,6 +240,7 @@ let () =
     | Some "apache-vhost" -> Config.apache_vhost args
     | Some "bot" -> Bot.tool args
     | Some "clean" -> clean () 
+    | Some "publish" -> Publish.run args 
     | Some s when BatString.starts_with s "plugins." -> Plugins.parserun s args
     | _ -> help ()
 
