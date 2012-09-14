@@ -117,6 +117,46 @@ let system command e =
     error e
       (Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn))
 
+let filemtime path = 
+  try let s = Unix.stat path in 
+      Ok s.Unix.st_mtime
+  with exn -> Bad exn
+
+let copy_if_newer src dest = 
+
+  let copy () = 
+    try let chan  = Pervasives.open_in_bin src in 
+	let chan' = Pervasives.open_out_bin dest in
+	let n = 1024 in
+	let s = String.create n in
+	let rec aux () = 
+	  let n' = Pervasives.input chan s 0 n in
+	  if n' > 0 then Pervasives.output chan' s 0 n' ; 
+	  if n' = n then aux ()
+	in
+	aux () ;
+	Pervasives.close_in  chan ;
+	Pervasives.close_out chan';
+	true
+    with exn -> 
+      path2_error "Could not copy file"
+	"Copy from %S to %S failed with exception : '%s'" src dest exn
+  in
+
+  let overwrite () = 
+    try Unix.unlink dest ; copy () with exn ->
+      path_error "Could not overwrite file"
+	"Unix.unlink on destination file %S failed : '%s'" dest exn 
+  in
+
+  match filemtime src, filemtime dest with 
+    | Ok t, Ok  t' when t < t' -> (* Is older *) false
+    | Ok _, Ok  _ -> copy () 
+    | Ok _, Bad _ -> overwrite () 
+    | Bad exn, _ -> 
+      path_error "Source file does not exist"
+	"Unix.stat %S failed with exception : '%s'" src exn 
+
 let lessc from into = 
   system ("lessc -x " ^ Filename.quote from ^ " > " ^ Filename.quote into) 
     "Could not compile LESS CSS sources to final CSS."
