@@ -139,7 +139,8 @@ let () = List.iter Install.mkdir [
   [ "ocaml" ; "plugins" ] ;
   [ "_build" ] ;
   [ "bot" ] ;
-  [ "www" ; "public" ]
+  [ "www" ] ;
+  [ "public" ]
 ]
 
 let () = if fresh then List.iter Install.mkdir [
@@ -190,7 +191,7 @@ let () = if fresh then List.iter
       [ "assets" ; "errorPage" ; "style.css" ] ;
       [ "assets" ; "errorPage" ; "def.adlib.ml" ] ;
       [ "assets" ; "errorPage" ; "en.adlib.ml" ] ;
-      [ "www" ; "500.htm" ] 
+      [ "public" ; "500.htm" ] 
     ]
     
 (* Install the configuration file *)
