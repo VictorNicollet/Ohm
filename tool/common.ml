@@ -36,6 +36,11 @@ let is_dir path =
     | Sys_error str when str = path ^ ": No such file or directory" -> false
     | exn -> error_is_dir path exn 
 
+let mkdir_ensure path access = 
+  let rec make path = 
+    if not (is_dir path) then (make (Filename.dirname path) ; mkdir path access)
+  in make path
+
 let error_readdir = 
   path_error 
     "Could not read directory."
@@ -151,8 +156,8 @@ let copy_if_newer src dest =
 
   match filemtime src, filemtime dest with 
     | Ok t, Ok  t' when t < t' -> (* Is older *) false
-    | Ok _, Ok  _ -> copy () 
-    | Ok _, Bad _ -> overwrite () 
+    | Ok _, Ok  _ -> overwrite () 
+    | Ok _, Bad _ -> copy () 
     | Bad exn, _ -> 
       path_error "Source file does not exist"
 	"Unix.stat %S failed with exception : '%s'" src exn 
