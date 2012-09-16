@@ -7,6 +7,9 @@ all:
 	ohm publish ocaml/main.byte /server.real 
 	chmod a+x www/server.real
 
+        # Publish all public elements
+	ohm publish 
+
         # Perform the deployment
 	www/server.real --put
 	www/server.real --reset

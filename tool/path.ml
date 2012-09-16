@@ -14,17 +14,15 @@ let bot     = Filename.concat root  "bot"
 let gen     = Filename.concat ocaml "gen"
 let assets  = Filename.concat root  "assets" 
 let build   = Filename.concat root  "_build"
-let public  = Filename.concat www   "public"
+let public  = Filename.concat root  "public"
   
 let less    = Filename.concat build "style.less"
 let css     = Filename.concat build "style.css"
-let css_sym = Filename.concat public "style.css"
-let css_url = "/public/style.css"    
+let css_url = "/style.css"    
   
 let coffee  = Filename.concat build "script.coffee"
 let js      = Filename.concat build "script.js"
-let js_sym  = Filename.concat public "script.js"
-let js_url  = "/public/script.js"    
+let js_url  = "/script.js"    
   
 let assetml = Filename.concat build "asset.ml"
   

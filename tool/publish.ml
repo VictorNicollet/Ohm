@@ -23,6 +23,40 @@ let publish source destination =
   if copy_if_newer src dest then
     Printf.printf "Publish %s -> %s\n" source destination
 
+let explore () = 
+
+  let rec aux path = 
+
+    let fullpath = Filename.concat Path.public path in
+    
+    let stat = 
+      try Unix.stat fullpath       
+      with exn ->      
+	path_error "Recursive publishing failure" "Could not stat %S : %s\n" fullpath exn
+    in
+
+    match stat.Unix.st_kind with 
+      | Unix.S_REG -> publish fullpath ("/" ^ path) 
+      | Unix.S_DIR -> 
+
+	let contents = readdir fullpath in
+	
+	let valid = 
+	  List.filter (fun str -> 
+	    not (BatString.starts_with str ".")
+	    && not (BatString.ends_with str "~") 
+	    && not (BatString.starts_with str "#")
+	  ) contents
+	in
+	
+	List.iter (Filename.concat path |- aux) valid
+	  
+      | _ -> ()
+	
+  in
+
+  aux ""
+
 let process pairs = 
   List.iter (fun (src,dest) -> publish src dest) pairs
 
@@ -33,5 +67,5 @@ let rec parse ?(acc=[]) = function
   | src :: dest :: t -> parse ~acc:((src,dest) :: acc) t
 
 let run = function 
-  | [] -> error "No files provided" "Usage: ohm publish <src> <dest>"
+  | []   -> explore () 
   | list -> parse list
