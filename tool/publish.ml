@@ -18,7 +18,7 @@ let publish source destination =
     error "Missing source"
       (Printf.sprintf "Source file %S was not found" src) ;
 
-  mkdir_ensure (Filename.dirname dest) 0o644 ;
+  mkdir_ensure (Filename.dirname dest) 0o755 ;
   
   if copy_if_newer src dest then
     Printf.printf "Publish %s -> %s\n" source destination
