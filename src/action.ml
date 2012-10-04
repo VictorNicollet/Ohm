@@ -26,7 +26,7 @@ let dispatch_define (server,prefix,args) action =
   let value protocol domain port suffix cgi =
     match Args.parse args suffix with None -> None | Some args ->
       match server # matches protocol domain port with None -> None | Some s ->
-	Some (server # cookie_domain, action (new fcgi_request endpt s args cgi)) 
+	Some (server # cookie_domain s, action (new fcgi_request endpt s args cgi)) 
   in
   
   Hashtbl.add defined key value	
@@ -148,10 +148,10 @@ module Convenience = struct
     let defport, protocol = if secure then 443,`HTTPS else 80,`HTTP in
     let port = BatOption.default defport port in
     (object
-      method protocol  = protocol
+      method protocol () = protocol
       method domain () = domain
       method port   () = port
-      method cookie_domain = cookies
+      method cookie_domain () = cookies
       method matches pr dom po = 
 	if po = port && pr = protocol && domain = dom then Some () else None
      end)
@@ -161,10 +161,10 @@ module Convenience = struct
     let port = BatOption.default defport port in
     let cut  = String.length suffix in
     (object
-      method protocol = protocol
+      method protocol _ = protocol
       method domain s = s ^ suffix
       method port   _ = port
-      method cookie_domain = cookies
+      method cookie_domain _ = cookies
       method matches pr dom po = 
 	if po = port && pr = protocol && BatString.ends_with dom suffix
 	then Some (BatString.left dom (String.length dom - cut)) else None

@@ -22,7 +22,7 @@
 class type ['param] server = object
 
   (** Is this server HTTP or HTTPS ? *)
-  method protocol : [`HTTP|`HTTPS]
+  method protocol : 'param -> [`HTTP|`HTTPS]
 
   (** What is the domain name for this server ? *)
   method domain : 'param -> string
@@ -33,7 +33,7 @@ class type ['param] server = object
   (** What is the cookie domain name for this server ? Cookies emitted by this server will be bound
       to this domain, which may make them available to other servers based on the standard cookie
       rules. Return [None] to set the cookie only for the current domain. *)
-  method cookie_domain : string option
+  method cookie_domain : 'param -> string option
 
   (** Does this server match an incoming request ? If so, extract the parameter that can be used to
       generate another request on this domain. *)
