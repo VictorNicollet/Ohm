@@ -211,3 +211,29 @@ let () = if fresh then Install.touch [".install"]
 (* Finish install by compiling the software. *)
   
 let () = Install.make fresh
+
+(* Display a nice welcome message. *)
+
+let () = if fresh then List.iter print_endline [
+  "================================================================" ;
+  ""
+  "  Welcome to the Ohm Framework !" ;
+  "" ;
+  "Your project is now ready. A few things you might want to do" ;
+  "first:" ;
+  "" ;
+  "## Add the basic files to a Git repository" ;
+  "git add ocaml/*.ml ocaml/_tags assets public bot Makefile .install" ;
+  "" ;
+  "## Register your project with Apache 2" ;
+  "sudo ohm apache-vhost > /etc/apache/sites-available/" ^ name ^ ".local";
+  "sudo a2ensite " ^ name ^ ".local" ;
+  "sudo service apache2 reload" ;
+  "" ;
+  "## Make '" ^ name ^ ".local' point at your project" ;
+  "sudo echo '127.0.0.1 " ^ name ^ ".local' >> /etc/hosts" ;
+  "" ;
+  "Thank you for using Ohm. Enjoy your project!" ;
+  "" ;
+  "                                        Victor Nicollet"
+]
