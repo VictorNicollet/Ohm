@@ -147,7 +147,9 @@ let fetch database =
 		    let docs   = BatList.filter_map begin fun json -> 
 		      try
 			Json.to_object (fun ~opt ~req -> 
-			  Some (Id.of_json (req "id"), req "doc")) json
+			  match req "doc" with 
+			    | (Json.Object _) as doc -> Some (Id.of_json (req "id"), doc)
+			    | _ -> None) json
 		      with _ -> None 
 		    end list in   
 		    let values = List.map 
