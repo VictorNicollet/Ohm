@@ -216,7 +216,7 @@ let () = Install.make fresh
 
 let () = if fresh then List.iter print_endline [
   "================================================================" ;
-  ""
+  "" ;
   "  Welcome to the Ohm Framework !" ;
   "" ;
   "Your project is now ready. A few things you might want to do" ;
