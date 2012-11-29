@@ -113,14 +113,6 @@ let get_binary_contents full =
       log "Util.get_contents: could not open %s (%s)" full (Printexc.to_string exn);
       None
 
-let urlencode str = 
-  let regexp = Str.regexp "[^-a-zA-Z0-9$_.+!*'(),]" in
-  let result = Str.global_substitute regexp begin fun str ->
-    let c = Str.matched_string str in 
-    Printf.sprintf "%%%0x" (Char.code c.[0])
-  end str in
-  result
-
 let get_contents file = 
   try 
     let chan = open_in file in 

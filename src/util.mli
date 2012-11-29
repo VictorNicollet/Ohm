@@ -9,8 +9,6 @@ val get_binary_contents : string -> string option
 val get_view_contents : string -> string option
 val get_resource_contents : string -> string option
 
-val urlencode : string -> string
-
 val log : ('a,unit,string,unit) format4 -> 'a
 val logreq : ('a,unit,string,unit) format4 -> 'a
 val logjson : Json_type.t -> string
