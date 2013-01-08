@@ -220,9 +220,9 @@ let help () =
 	 "init", "Initialize new ohm project in in directory" ;
 	 "plug <plugin>", "Enable a new plugin" ;
 	 "unplug <plugin>", "Disable an existing plugin" ;
-	 "apache-vhost", "Output apache VHOST configuration on stdout" ;
-	 "bot start", "Start the asynchronous processing bot." ;
-	 "bot stop", "Stop the asynchronous processing bot." ;
+	 "vhost [apache|nginx]", "Output VHOST configuration on stdout" ;
+	 "fastcgi [start|stop|apache]", "Control the FastCGI server" ; 
+	 "bot [start|stop]", "Control the asynchronous processing bot." ;
 	 "publish", "Make a file or list of files public" ;
        ])
 
@@ -237,8 +237,9 @@ let () =
     | Some "plugins.all" -> Plugins.run_all () 
     | Some "plug" -> Plugins.plug args 
     | Some "unplug" -> Plugins.unplug args
-    | Some "apache-vhost" -> Config.apache_vhost args
+    | Some "vhost" -> Config.vhost args 
     | Some "bot" -> Bot.tool args
+    | Some "fastcgi" -> Fastcgi.tool args
     | Some "clean" -> clean () 
     | Some "publish" -> Publish.run args 
     | Some s when BatString.starts_with s "plugins." -> Plugins.parserun s args

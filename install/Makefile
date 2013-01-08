@@ -4,15 +4,15 @@ all:
 	ohm build  # Build the ocaml code found in '/ocaml', generates '/ocaml/main.byte'
 
         # Copy the server binary over to the correct path
-	ohm publish ocaml/main.byte /server.real 
-	chmod a+x www/server.real
+	cp ocaml/main.byte server
+	chmod a+x server
 
         # Publish all public elements
 	ohm publish 
 
         # Perform the deployment
-	www/server.real --put
-	www/server.real --reset
+	./server --put
+	./server --reset
 
 clean: 
 	ohm clean 
