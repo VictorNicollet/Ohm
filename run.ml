@@ -94,9 +94,6 @@ module Install = struct
       run "cp %s %s" (Filename.quote (path src)) (Filename.quote (path dest))
     )
 
-  let mkexec p = 
-    run "chmod u+x %s" (Filename.quote (path p))
-
   let config () = 
     let path = path [ "ocaml" ; "configProject.ml" ] in
     if not (Sys.file_exists path) then
@@ -138,7 +135,6 @@ let () = List.iter Install.mkdir [
   [ ".ohm" ] ;
   [ "ocaml" ; "plugins" ] ;
   [ "_build" ] ;
-  [ "bot" ] ;
   [ "www" ] ;
   [ "public" ]
 ]
@@ -196,12 +192,6 @@ let () = if fresh then List.iter
 (* Install the configuration file *)
 
 let () = if fresh then Install.config ()
-
-(* Make files executable when appropriate *)
-
-let () = List.iter Install.mkexec [
-  [ "bot" ; "run" ]
-]
 
 (* Touch the "installed" file to avoid fresh installs from now on. *)
 
