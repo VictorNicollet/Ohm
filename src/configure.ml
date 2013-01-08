@@ -8,8 +8,16 @@ type path =
 
 exception Locked of path * string
 
-(* From whatever/build/app to whatever/ *)
-let root = Filename.dirname (Filename.dirname Sys.executable_name)
+(* Find the directory that contains ".ohm" *)    
+let root = 
+  let is_dir dir = try Sys.is_directory dir with _ -> false in
+  let rec find dir = 
+    if is_dir (Filename.concat dir ".ohm") then dir 
+    else let subdir = Filename.dirname dir in 
+	 if subdir = dir then "/"
+	 else find subdir
+  in 
+  find (Sys.getcwd())
 
 let log       = ref (false, "-")
 let templates = ref (false, root ^ "/gen/views/")
