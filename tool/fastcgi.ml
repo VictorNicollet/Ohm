@@ -39,10 +39,11 @@ let start () =
   let _ = 
     putfile (Filename.concat fastcgi "run") 
       (Printf.sprintf "#!/bin/sh
+cd %s
 rm -f %s
 umask u=rwx,g=rwx,o=rwx
 spawn-fcgi -n -s %s -f %s
-" www_socket www_socket bin_server) ;
+" Path.www www_socket www_socket bin_server) ;
   in
   system (Printf.sprintf "chmod u+x %s" (Filename.concat fastcgi "run")) 
     "Could not install FastCGI supervisor" ;
@@ -56,6 +57,7 @@ let apache () =
   symlink bin_server www_server
 
 let rec tool = function 
+  | [] 
   | "start" :: _ -> start () 
   | ["stop"] -> stop ~apache_too:true
   | "stop" :: args -> stop ~apache_too:true ; tool args 

@@ -4,18 +4,24 @@ open BatPervasives
 
 open Common 
 
-let start () = 
-  if is_dir (Filename.concat Path.bot "supervise") then
-    system (Printf.sprintf "svc -u %s" (Filename.quote Path.bot)) 
-      "Could not start asynchronous bot process"      
-  else
-    system (Printf.sprintf "supervise %s &" (Filename.quote Path.bot)) 
-      "Could not start asynchronous bot process" 
-
 let stop () = 
-  system (Printf.sprintf "svc -d %s" (Filename.quote Path.bot)) 
-    "Could not stop asynchronous bot process"
 
+  if is_dir Path.bot then begin
+    let _ = Sys.command (Printf.sprintf "svc -d %s" Path.bot) in
+    system (Printf.sprintf "rm -rf %s" Path.bot)
+      "Could not remove the async bot directory"
+  end 
+
+let start () = 
+
+  stop () ;
+  mkdir Path.bot 0o755 ;
+  let _ = putfile (Filename.concat Path.bot "run") "#!/bin/sh\ncd ..\n./server --bot\n" in
+  system (Printf.sprintf "chmod u+x %s" (Filename.concat Path.bot "run")) 
+    "Could not install async bot supervisor" ;
+  system (Printf.sprintf "supervise %s &" Path.bot) 
+    "Could not start async bot process" 
+      
 let tool = function 
   | []
   | "start" :: _ -> start ()
