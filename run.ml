@@ -175,7 +175,6 @@ let () = List.iter (fun (src,dest) -> Install.symlink src dest) [
 
 let () = if fresh then List.iter 
     (fun path -> Install.copy ([".ohm";"Ohm";"install"]@path) path) [
-      [ "bot" ; "run" ] ;
       [ "Makefile" ] ;
       [ "ocaml" ; "myocamlbuild.ml" ] ;
       [ "ocaml" ; "_tags" ] ;
@@ -226,7 +225,8 @@ let () = if fresh then List.iter print_endline [
   "git add ocaml/*.ml ocaml/_tags assets public bot Makefile .install" ;
   "" ;
   "## Register your project with Apache 2" ;
-  "sudo ohm apache-vhost > /etc/apache/sites-available/" ^ name ^ ".local";
+  "ohm fastcgi apache" ; 
+  "sudo ohm vhost apache > /etc/apache/sites-available/" ^ name ^ ".local";
   "sudo a2ensite " ^ name ^ ".local" ;
   "sudo service apache2 reload" ;
   "" ;
