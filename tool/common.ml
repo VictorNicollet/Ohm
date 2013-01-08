@@ -112,15 +112,21 @@ let error_parse path = function
       "ohm tried to parse file %S but encountered an error: '%s'"
       path exn 
       
-let system command e = 
+let rec system ?(tries=0) command e = 
   try let () = print_endline command in
       let result = Sys.command command in 
       if result <> 0 then 
-	error e
-	  (Printf.sprintf "The command %S returned error code %d" command result) 
+	if tries > 0 then 
+	  (Unix.sleep 1 ; system ~tries:(tries-1) command e) 
+	else 
+	  error e
+	    (Printf.sprintf "The command %S returned error code %d" command result) 
   with exn ->
-    error e
-      (Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn))
+    if tries > 0 then 
+      (Unix.sleep 1 ; system ~tries:(tries-1) command e)
+    else
+      error e
+	(Printf.sprintf "The command %S raised exception %s" command (Printexc.to_string exn))
 
 let filemtime path = 
   try let s = Unix.stat path in 

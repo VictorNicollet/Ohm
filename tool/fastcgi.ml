@@ -5,28 +5,25 @@ open Common
 let bin_server () = Filename.concat Path.root "server"
 let www_server () = Filename.concat Path.www  "server"
 let www_socket () = Filename.concat Path.www  "socket" 
-let pidfile    () = Filename.concat Path.root "fastcgi.pid" 
+let fastcgi    () = Filename.concat Path.root ".fastcgi"
 
 let stop ~apache_too = 
   let bin_server = bin_server () in
   let www_server = www_server () in
   let www_socket = www_socket () in
-  let pidfile    = pidfile () in
+  let fastcgi    = fastcgi () in
 
   (* Removing the "server" symlink *)
-  let remove = try Unix.readlink www_server = bin_server && apache_too with _ -> false in
-  if remove then 
-    unlink www_server ;
+  if apache_too then 
+    let remove = try Unix.readlink www_server = bin_server with _ -> false in
+    if remove then 
+      unlink www_server ;
 
-  (* Killing the FastCGI server process *)
-  if file_exists pidfile then begin
-    let pid = try int_of_string (readfile pidfile) 
-      with exn -> path_error "Invalid PID file."
-	"File %s should contain a PID, but parsing failed with exception: '%s'" pidfile exn 
-    in 
-    system (Printf.sprintf "kill %d" pid) 
-      "Killing running FastCGI process" ;
-    unlink pidfile 
+  (* Stopping the FastCGI server process *)
+  if is_dir fastcgi then begin
+    let _ = Sys.command (Printf.sprintf "svc -d %s" (Filename.quote fastcgi)) in
+    system (Printf.sprintf "rm -rf %s" (Filename.quote fastcgi))
+      "Could not remove the FastCGI directory"
   end ;
 
   (* Removing the socket *)
@@ -36,13 +33,22 @@ let stop ~apache_too =
 let start () = 
   let bin_server = bin_server () in
   let www_socket = www_socket () in
-  let pidfile    = pidfile () in
+  let fastcgi    = fastcgi () in
   stop ~apache_too:true ;
-  system (Printf.sprintf "spawn-fcgi -P %s -s %s -f %s" pidfile www_socket bin_server)
-    "Spawning a FastCGI process" ;
-  system (Printf.sprintf "chmod a+w %s" www_socket) 
-    "Enable web server to write to FastCGI socket" 
+  mkdir fastcgi 0o755 ;
+  let _ = 
+    putfile (Filename.concat fastcgi "run") 
+      (Printf.sprintf "#!/bin/sh\nspawn-fcgi -n -s %s -f %s\n" www_socket bin_server) ;
+  in
+  system (Printf.sprintf "chmod u+x %s" (Filename.concat fastcgi "run")) 
+    "Could not install FastCGI supervisor" ;
+  system (Printf.sprintf "supervise %s &" fastcgi) 
+    "Could not start FastCGI process" ;
 
+  let command = Printf.sprintf "chmod a+w %s" www_socket in
+  system ~tries:3 command "Could not allow web server to write to FastCGI socket" 
+  
+      
 let apache () = 
   let bin_server = bin_server () in
   let www_server = www_server () in 
