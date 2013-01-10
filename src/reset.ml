@@ -1,10 +1,10 @@
-(* Ohm is © 2012 Victor Nicollet *)
+(* Ohm is © 2013 Victor Nicollet *)
 
 open BatPervasives
 
 module type RESET = sig
 
-  val run : unit -> (#CouchDB.ctx,unit) Run.t
+  val send : unit -> unit
 
   val check_wrapper : ('a -> unit) -> 'a -> unit 
 
@@ -14,7 +14,7 @@ module type RESET = sig
 
 end
 
-module Make = 
+module UsingCouchDB = 
   functor (DB : CouchDB.DATABASE) ->
 struct
 
@@ -36,15 +36,17 @@ struct
 
   let _initial = Run.eval (new CouchDB.init_ctx) (_get ())
 
-  let run () =
-    Run.context |> Run.bind begin fun ctx -> 
-      let reset = object 
-	method t    = "rset" 
-	method time = Util.string_of_time (ctx # time) 
-      end in    
-      Tbl.set id reset 
-      |> Run.map (fun _ -> Util.log "Reset.perform : request sent") 
-    end
+  let send () =
+    Run.eval (new CouchDB.init_ctx) begin 
+      Run.context |> Run.bind begin fun ctx -> 
+	let reset = object 
+	  method t    = "rset" 
+	  method time = Util.string_of_time (ctx # time) 
+	end in    
+	Tbl.set id reset 
+	|> Run.map (fun _ -> Util.log "Reset.perform : request sent") 
+      end
+    end 
 
   let resetting () = 
     Run.eval (new CouchDB.init_ctx) (_get () |> Run.map ((<>) _initial)) 
@@ -59,3 +61,5 @@ struct
     try f a ; check () with exn -> check () ; raise exn
 
 end
+
+module Make = UsingCouchDB

@@ -43,7 +43,7 @@ struct
       | `Web   -> web_loop ()
       | `Bot   -> bot_loop ()
       | `Put   -> CouchDB.compile_views ()
-      | `Reset -> Run.eval (new CouchDB.init_ctx) (Reset.run ())
+      | `Reset -> Reset.send ()
 
 end
 
