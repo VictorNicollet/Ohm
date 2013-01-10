@@ -301,3 +301,9 @@ let rec next_string string =
       let copy = String.copy string in 
       copy.[n-1] <- Char.chr (code + 1) ;
       copy
+
+let every d f = 
+  let next = ref 0. in
+  fun x -> 
+    let now = Unix.gettimeofday () in
+    if now > !next then ( next := now +. d ; f x) 

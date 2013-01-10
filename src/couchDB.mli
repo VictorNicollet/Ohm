@@ -240,9 +240,6 @@ module ReduceView :
     REDUCE_VIEW with type reduce_key   = Def.Key.t
 		and  type reduce_value = Def.Value.t    
 
-val compact : unit -> unit
-val compile_views : unit -> unit
-
 module Convenience : sig
 
   module type LOCAL_CONFIG = sig

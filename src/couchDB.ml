@@ -18,8 +18,6 @@ type database = ImplDB.t = {
   db_prefix : string
 }
 
-let compact = ImplDB.compact
-
 (* Cache-related definitions --------------------------------------------------------------- *)
 
 exception CouchDB_Error = ImplCache.CouchDB_error
@@ -50,8 +48,12 @@ module ReduceView = ImplViews.ReduceView
 module DocView    = ImplViews.DocView
 module MapView    = ImplViews.MapView
 
-let compile_views () = ImplViews.compile_views ()
-
 (* Convenience module ---------------------------------------------------------------------- *)
 
 module Convenience = CouchDB_convenience
+
+(* Bind signals ---------------------------------------------------------------------------- *)
+
+let () = Sig.listen Sig.Std.Bot.tick (Util.every 3600.0 ImplDB.compact) 
+let () = Sig.listen Sig.Std.Put.once ImplViews.compile_views
+

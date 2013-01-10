@@ -1,4 +1,4 @@
-(* Ohm is © 2011 Victor Nicollet *)
+(* Ohm is © 2013 Victor Nicollet *)
 
 type ('a,'b) listener = 'a -> 'b
 
@@ -11,3 +11,26 @@ let make collapse =
   let channel f = callbacks := f :: !callbacks in
   let call x = collapse (List.map (fun f -> f x) !callbacks) in
   call, channel
+
+module Std = struct
+
+  module Web = struct
+
+    let init_, init = make ignore
+
+  end
+
+  module Put = struct
+      
+    let once_, once = make ignore
+
+  end
+
+  module Bot = struct
+
+    let init_, init = make ignore
+    let tick_, tick = make ignore
+
+  end
+
+end

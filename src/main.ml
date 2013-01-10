@@ -1,4 +1,4 @@
-(* Ohm is © 2012 Victor Nicollet *)
+(* Ohm is © 2013 Victor Nicollet *)
 
 module Make = 
   functor (Reset:Reset.RESET) ->
@@ -7,12 +7,11 @@ struct
   let run ?async role = 
 
     let web_loop () = 
-      if not (Reset.resetting ()) then 
+      if not (Reset.resetting ()) then       	
 	Action.run (Reset.check_wrapper Action.dispatch)
     in
 
     let bot_loop () = 
-      let last_compact = ref 0. in
       if not (Reset.resetting ()) then 
 	let rec loop_check () = 
 
@@ -20,9 +19,7 @@ struct
 	  Reset.check () ;
 
 	  (* Compact databases every hour *)
-	  let now = Unix.gettimeofday () in
-	  if now > !last_compact +. 3600.0 then 
-	    ( last_compact := now ; CouchDB.compact ()) ;
+	  Sig.Std.Bot.tick_ () ; 
 
 	  (* Perform one run of async processing. *)
 	  let wait = 
@@ -38,11 +35,11 @@ struct
 	in 
 	loop_check () 
     in
-      	
+
     match role with
-      | `Web   -> web_loop ()
-      | `Bot   -> bot_loop ()
-      | `Put   -> CouchDB.compile_views ()
+      | `Web   -> Sig.Std.Web.init_ () ; web_loop ()
+      | `Bot   -> Sig.Std.Bot.init_ () ; bot_loop ()
+      | `Put   -> Sig.Std.Put.once_ () 
       | `Reset -> Reset.send ()
 
 end

@@ -43,3 +43,5 @@ val number : 'a list -> (int * 'a) list
 val clip : int -> string -> string
 
 val next_string : string -> string
+
+val every : float -> ('a -> unit) -> 'a -> unit 
