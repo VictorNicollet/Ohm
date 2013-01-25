@@ -340,7 +340,7 @@ struct
 	  | x, `put elt -> (x,`put (Type.to_json elt))
 	  | x, `keep    -> (x,`keep)
 	  | x, `delete  -> (x,`delete))
-	(update (BatOption.map Type.of_json json)) 
+	(update (BatOption.bind Type.of_json_safe json)) 
     in
 
     Database.transact (Id.to_id id) update
@@ -357,13 +357,24 @@ struct
     Database.delete (Id.to_id id) 
 
   let delete_if id pred = 
-    Database.delete_if (Id.to_id id) (Type.of_json |- pred)
+    Database.delete_if (Id.to_id id) begin fun json -> 
+      match Type.of_json_safe json with 
+	| Some t -> pred t
+	| None -> false
+    end 
 
   let update id f = 
-    Database.update (Id.to_id id) (Type.of_json |- f |- Type.to_json) 
+    Database.update (Id.to_id id) begin fun json -> 
+      match Type.of_json_safe json with 
+	| Some t -> Type.to_json (f t)
+	| None   -> json 
+    end 
 
   let replace id f = 
-    Database.replace (Id.to_id id) (BatOption.map Type.of_json |- f |- Type.to_json) 
+    Database.replace (Id.to_id id) begin fun json_opt -> 
+      let t_opt = BatOption.bind Type.of_json_safe json_opt in
+      Type.to_json (f t_opt) 
+    end
 
   let set id elt = 
     Database.set (Id.to_id id) (Type.to_json elt) 
