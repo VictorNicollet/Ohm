@@ -1,4 +1,4 @@
-(* Ohm is © 2012 Victor Nicollet *)
+(* Ohm is © 2013 Victor Nicollet *)
 
 open BatPervasives
 
@@ -223,6 +223,7 @@ let help () =
 	 "vhost [apache|nginx]", "Output VHOST configuration on stdout" ;
 	 "fastcgi [start|stop|apache]", "Control the FastCGI server" ; 
 	 "bot [start|stop]", "Control the asynchronous processing bot." ;
+	 "snip", "Create a module from a snippet" ;
 	 "publish", "Make a file or list of files public" ;
        ])
 
@@ -242,6 +243,7 @@ let () =
     | Some "fastcgi" -> Fastcgi.tool args
     | Some "clean" -> clean () 
     | Some "publish" -> Publish.run args 
+    | Some "snip" -> Snip.make args
     | Some s when BatString.starts_with s "plugins." -> Plugins.parserun s args
     | _ -> help ()
 
