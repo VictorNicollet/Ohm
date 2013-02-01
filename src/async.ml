@@ -143,12 +143,14 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
     
     return None
 
-  let run_task defined ctx = 
+  let run_task ?timeout defined ctx = 
     let reschedule = ref (return ()) in
-    try Run.eval ctx (run_next defined reschedule) 
+    let timeout = BatOption.map Run.timeout timeout in
+    try Run.eval ?timeout ctx (run_next defined reschedule) 
     with 
       | Reschedule -> Run.eval ctx (!reschedule) ; None
-      | exn -> log "Ohm.Async: task failed with %S" (Printexc.to_string exn) ; None
+      | Run.Timeout -> Util.log "Ohm.Async: task timed out" ; None
+      | exn -> Util.log "Ohm.Async: task failed with %S" (Printexc.to_string exn) ; None
 
   (* This is the manager. It has no dependency on CouchDB. *)
 
@@ -194,7 +196,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 
     method stats : ('ctx,'stats) Run.t = stats ()
 
-    method run new_ctx = 
+    method run ?timeout new_ctx = 
       if not (BatPSet.is_empty undefined) then begin
 	BatPSet.iter (log "Ohm.Async: task %S not defined") undefined ;
 	failwith "Async tasks were not defined"
@@ -211,7 +213,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 	    process more next 
       in
 
-      let list = (run_task defined,1,ref None) :: periodic in
+      let list = (run_task ?timeout defined,1,ref None) :: periodic in
 
       process false list
 

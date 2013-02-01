@@ -96,7 +96,7 @@ module Make : functor(DB:CouchDB.CONFIG) -> sig
 	[false] if there is nothing left to run (this information can be
 	used to sleep for a little while). 
     *)
-    method run : (unit -> 'ctx) -> bool
+    method run : ?timeout:float -> (unit -> 'ctx) -> bool
 
   end
 
