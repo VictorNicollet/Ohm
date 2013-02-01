@@ -20,7 +20,11 @@ val edit_context : ('ca -> 'cb) -> ('cb,'any) t -> ('ca,'any) t
 
 (** {2 Evaluation} *)
 
-val eval : 'ctx -> ('ctx,'a) t -> 'a 
+exception Timeout
+
+val eval : ?timeout:(unit -> bool) -> 'ctx -> ('ctx,'a) t -> 'a 
+
+val timeout : float -> (unit -> bool) 
 
 (** {2 Concurrency manipulation} *)
 

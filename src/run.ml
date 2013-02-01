@@ -108,12 +108,20 @@ let opt_bind f = function
 
 (* Evaluation ------------------------------------------------------------------------------ *)
 
-let eval ctx m = 
+exception Timeout 
+
+let eval ?timeout ctx m = 
   let queue  = Queue.create () in 
   let r      = ref None in 
   let emit x = r := Some x ; nop in 
-  
+
+  let timeout = match timeout with 
+    | Some f -> f
+    | None   -> (fun () -> false) 
+  in
+
   let rec loop = function Do step -> 
+    if timeout () then raise Timeout ;
     match Lazy.force step with 
       | h :: t -> List.iter (fun x -> Queue.push x queue) t ; loop h
       | []     -> match try Some (Queue.pop queue) with Queue.Empty -> None with
@@ -123,3 +131,7 @@ let eval ctx m =
 
   loop (m ctx emit) ;
   match !r with None -> assert false | Some result -> result
+
+let timeout duration = 
+  let ends = duration +. Unix.gettimeofday () in
+  fun () -> Unix.gettimeofday () > ends 
