@@ -136,6 +136,12 @@ end
 *)
 val file : file:string -> mime:string -> data:string -> response -> response
 
+(** {b Raw data}: returns a file for immediate viewing. One should provide the 
+    MIME type of the returned data, and the string representing the data itself.
+    This overwrites any Data and Javascript channels, but conserves Cookies.
+*)
+val raw : mime:string -> data:string -> response -> response 
+
 (** {b JSONP}: returns the provided JSON using the JSONP format. 
 
     Any existing JSON or HTML data present in the response is removed, but JS code

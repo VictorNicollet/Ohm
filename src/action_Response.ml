@@ -7,7 +7,7 @@ type response_kind =
   | Page of (JsCode.t -> string) * JsCode.t
   | Redirect of string
   | Json of (string * Json.t) list * JsCode.t
-  | File of string * string * string
+  | File of string option * string * string
   | Jsonp of (string * Json.t) list * JsCode.t
       
 type response = 
@@ -50,7 +50,12 @@ let with_cookie ~name ~value ~life response = {
     
 let file ~file ~mime ~data response = {
   response with 
-    kind = File (file, mime, data)
+    kind = File (Some file, mime, data)
+}
+
+let raw ~mime ~data response = {
+  response with 
+    kind = File (None, mime, data)
 }
   
 let json json response = {
@@ -114,7 +119,7 @@ let process suffix (cgi : Netcgi.cgi) response =
       cgi # environment # send_output_header () 
 
     | File (file, mime, data) ->
-      cgi # set_header ~set_cookies:cookies ~content_type:mime ~filename:file ();
+      cgi # set_header ~set_cookies:cookies ~content_type:mime ?filename:file ();
       cgi # environment # send_output_header () ;
       ignore (out_channel # output data 0 (String.length data)) 
  
