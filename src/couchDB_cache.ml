@@ -26,7 +26,7 @@ module CacheKey = struct
   let make database id = { id = id ; db = database }
   
   let url x = 
-    x.db.ImplDB.db_prefix ^ Id.str x.id
+    x.db.ImplDB.db_prefix ^ Netencoding.Url.encode (Id.str x.id)
 
 end
 
