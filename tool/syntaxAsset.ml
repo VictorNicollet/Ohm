@@ -1,4 +1,6 @@
-(* Ohm is © 2012 Victor Nicollet *)
+(* Ohm is © 2013 Victor Nicollet *)
+
+open BatPervasives
 
 type pos = Lexing.position * Lexing.position 
 
@@ -449,10 +451,6 @@ let rec extract_assets revpath sub (list : buffered_cell list) =
 
 (* This extracts `Id cells back to the highest scope they can be defined in. *)
 
-
-let uid = ref 0
-let getuid () = incr uid ; !uid 
-
 type id_cell = 
   [ `Print  of expr
   | `AdLib  of located * expr option
@@ -468,6 +466,9 @@ type id_cell =
   ]
 
 let extract_ids (list : clean_cell list) = 
+
+  let uid = ref 0 in
+  let getuid () = incr uid ; !uid in
 
   let wrap (defs,inner) = 
     if defs <> [] then [`DefId (defs,inner)] else inner
@@ -532,17 +533,32 @@ and cell_root =
 
 let contents x = x.contents
 
-let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) = 
+let extract_roots list = 
 
-  let split_expr ?(printed=false) (var,flags) = 
-    let uid  = getuid () in 
-    let fill inner = `Extract (uid, var, inner) in
-    if printed && flags = [] then
-      let uid' = getuid () in
-      (uid', fun inner -> fill (`Put (uid',uid,`Esc,inner)))
-    else
-      List.fold_left begin fun (uid,fill) flag -> 
-	match flag with 
+  let rec max_id acc = function 
+    | [] -> acc
+    | `Id id :: tail -> max_id (max id acc) tail 
+    | `DefId (i,l) :: tail -> max_id (List.fold_left (fun a (i,_) -> max a i) acc i) tail 
+    | `Option (_,_,a,b) :: tail
+    | `List (_,_,a,b) :: tail 
+    | `If (_,a,b) :: tail -> max_id (max_id (max_id acc a) b) tail
+    | _ :: tail -> max_id acc tail  
+  in
+    
+  let uid = ref (max_id 0 list) in
+  let getuid () = incr uid ; !uid in
+
+  let rec aux ?(ids=[]) ?(accum=[]) (list:id_cell list) = 
+
+    let split_expr ?(printed=false) (var,flags) = 
+      let uid  = getuid () in 
+      let fill inner = `Extract (uid, var, inner) in
+      if printed && flags = [] then
+	let uid' = getuid () in
+	(uid', fun inner -> fill (`Put (uid',uid,`Esc,inner)))
+      else
+	List.fold_left begin fun (uid,fill) flag -> 
+	  match flag with 
 	  | [ { contents = "ohm" } ] -> let uid' = getuid () in
 					(uid', fun inner -> fill (`Ohm (uid',uid,inner)))
 	  | [ { contents = "raw" } ] -> let uid' = getuid () in
@@ -553,28 +569,28 @@ let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) =
 	  | [] -> uid, fill
 	  | list -> let uid' = getuid () in
 		    (uid', fun inner -> fill (`Apply (uid', uid, list, inner)))
-      end (uid,fill) flags 
-  in
-
-  match list with 
+	end (uid,fill) flags 
+    in
+    
+    match list with 
     | [] -> `Render (List.rev accum) 
     | `Id id :: tail -> let accum = `Id id :: accum in
-			extract_roots ~ids ~accum tail 
+			aux ~ids ~accum tail 
     | [`DefId (i,l)]  -> let ids = ids @ i in 
-			 `DefId (List.map fst i,extract_roots ~ids ~accum l) 
+			 `DefId (List.map fst i,aux ~ids ~accum l) 
     | `DefId (i,l) :: tail -> let a = 
 				let ids = ids @ i in 
-				`DefId (List.map fst i,extract_roots ~ids ~accum l)
+				`DefId (List.map fst i,aux ~ids ~accum l)
 			      in
- 			      let b = extract_roots ~ids ~accum tail in
+ 			      let b = aux ~ids ~accum tail in
 			      `Seq ( a, b ) 
     | `String (start,length) :: tail -> let accum = `String (start,length) :: accum in 
-					extract_roots ~ids ~accum tail 
+					aux ~ids ~accum tail 
     | `Print expr :: tail -> let uid, fill = split_expr ~printed:true expr in 
 			     let accum = `Print uid :: accum in
-			     fill (extract_roots ~ids ~accum tail) 
+			     fill (aux ~ids ~accum tail) 
     | `Script (name,types) :: tail -> let accum = `Script (name,ids,types) :: accum in 
-				      extract_roots ~ids ~accum tail 
+				      aux ~ids ~accum tail 
     | `AdLib (variant,expr) :: tail -> let uid, fill = match expr with 
                                          | None -> None, (fun inner -> inner) 
 					 | Some e -> let uid, fill = split_expr e in
@@ -585,33 +601,37 @@ let rec extract_roots ?(ids=[]) ?(accum=[]) (list:id_cell list) =
 				       let fill inner = 
 					 fill (`AdLib (uid', variant, uid, inner))
 				       in
-				       fill (extract_roots ~ids ~accum tail) 
+				       fill (aux ~ids ~accum tail) 
     | `Sub (e,l) :: tail -> let uid, fill = split_expr e in 
 			    let uid' = getuid () in
-			    let fill inner = fill (`Sub (uid', uid, extract_roots ~ids l, inner)) in
+			    let fill inner = fill (`Sub (uid', uid, aux ~ids l, inner)) in
 			    let accum = `Print uid' :: accum in
-			    fill (extract_roots ~ids ~accum tail) 
+			    fill (aux ~ids ~accum tail) 
     | `Option (l,e,a,b) :: tail -> let uid, fill = split_expr e in
 				   let uid' = getuid () in
-				   let a, b = extract_roots ~ids a, extract_roots ~ids b in
+				   let a, b = aux ~ids a, aux ~ids b in
 				   let fill inner = fill (`Option (uid',l,uid,a,b,inner)) in 
 				   let accum = `Print uid' :: accum in 
-				   fill (extract_roots ~ids ~accum tail) 
+				   fill (aux ~ids ~accum tail) 
     | `List (l,e,a,b) :: tail ->  let uid, fill = split_expr e in
 				  let uid' = getuid () in
-				  let a, b = extract_roots ~ids a, extract_roots ~ids b in 
+				  let a, b = aux ~ids a, aux ~ids b in 
 				  let fill inner = fill (`List (uid',l,uid,a,b,inner)) in
 				  let accum = `Print uid' :: accum in 
-				  fill (extract_roots ~ids ~accum tail) 
+				  fill (aux ~ids ~accum tail) 
     | `If (e,a,b) :: tail -> let uid, fill = split_expr e in
 			     let uid' = getuid () in
-			     let a, b = extract_roots ~ids a, extract_roots ~ids b in 
+			     let a, b = aux ~ids a, aux ~ids b in 
 			     let fill inner = fill (`If (uid',uid,a,b,inner)) in
 			     let accum = `Print uid' :: accum in 
-			     fill (extract_roots ~ids ~accum tail) 
+			     fill (aux ~ids ~accum tail) 
     | `Call l :: tail -> let uid = getuid () in
-			 `Call (uid, l, extract_roots ~ids ~accum:(`Print uid :: accum) tail) 
-      
+			 `Call (uid, l, aux ~ids ~accum:(`Print uid :: accum) tail) 
+
+  in
+
+  aux list
+			   
 let formats root = 
   let rec recurse (acc:string list) = function
     | `Render list -> List.concat ((List.map (function 
