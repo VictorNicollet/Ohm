@@ -338,6 +338,7 @@ type buffered_cell =
   
 type extracted = {
   html   : string ;
+  htmls  : (string * string) list ; 
   css    : Buffer.t ;
   id     : int ;
   coffee : Buffer.t ;
@@ -418,36 +419,39 @@ type clean_cell =
   | `Script of string * Coffee.typ list
   ]
 
-let rec extract_assets revpath sub (list : buffered_cell list) = 
-  let extract sub = function
-    | `Print e    -> sub, `Print e 
-    | `Script s   -> sub, `Script s
-    | `Id id      -> sub, `Id id
-    | `AdLib (v,e) -> sub, `AdLib (v,e)
-    | `If (e,a,b) -> let sub, a = extract_assets revpath sub a in
-		     let sub, b = extract_assets revpath sub b in 
-		     sub, `If (e,a,b) 
-    | `Option (l,e,a,b) -> let sub, a = extract_assets revpath sub a in
-			   let sub, b = extract_assets revpath sub b in 
-			   sub, `Option (l,e,a,b) 
-    | `List (l,e,a,b) -> let sub, a = extract_assets revpath sub a in
-			 let sub, b = extract_assets revpath sub b in 
-			 sub, `List (l,e,a,b) 
-    | `Sub (e,l) -> let sub, l = extract_assets revpath sub l in
-		    sub, `Sub (e,l)
-    | `String (s,l) -> sub, `String (s,l) 
-    | `Define (s,n,l) -> let revpath = n.contents :: revpath in 
-			 let sub, l = extract_assets revpath sub l in
-			 (revpath, l) :: sub, 
-			 (if s then `Call revpath else `String (0,0))
-  in
-  List.fold_right 
-    (fun cell (sub,out) -> 
-      let sub, cell = extract sub cell in 
-      match cell with 
+let extract_assets add revpath sub (list : buffered_cell list) = 
+  let rec aux revpath sub list = 
+    let extract sub = function
+      | `Print e    -> sub, `Print e 
+      | `Script s   -> sub, `Script s
+      | `Id id      -> sub, `Id id
+      | `AdLib (v,e) -> sub, `AdLib (v,e)
+      | `If (e,a,b) -> let sub, a = aux revpath sub a in
+		       let sub, b = aux revpath sub b in 
+		       sub, `If (e,a,b) 
+      | `Option (l,e,a,b) -> let sub, a = aux revpath sub a in
+			     let sub, b = aux revpath sub b in 
+			     sub, `Option (l,e,a,b) 
+      | `List (l,e,a,b) -> let sub, a = aux revpath sub a in
+			   let sub, b = aux revpath sub b in 
+			   sub, `List (l,e,a,b) 
+      | `Sub (e,l) -> let sub, l = aux revpath sub l in
+		      sub, `Sub (e,l)
+      | `String (s,l) -> sub, `String (s,l) 
+      | `Define (s,n,l) -> let revpath = n.contents :: revpath in 
+			   let sub, l = aux revpath sub l in
+			   add revpath l :: sub, 
+			   (if s then `Call revpath else `String (0,0))
+    in
+    List.fold_right 
+      (fun cell (sub,out) -> 
+	let sub, cell = extract sub cell in 
+	match cell with 
 	| `String (_,0) -> (sub,out) 
 	| _ ->  (sub, cell :: out))
-    list (sub,[])
+      list (sub,[])
+  in
+  aux revpath sub list 
 
 (* This extracts `Id cells back to the highest scope they can be defined in. *)
 

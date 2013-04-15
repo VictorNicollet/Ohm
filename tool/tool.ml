@@ -47,21 +47,6 @@ end
 let parsed_assets = lazy begin 
 
   let assets = Lazy.force assets in 
-  
-  (* Extracting HTML *)
-
-  let parse_html (kind,asset) = 
-    match kind with `Coffee | `Less | `AdLib -> None | `View -> 
-      let result = readfile_lexbuf asset Asset.parse in
-      match result with 
-	| Ok stream -> Some (asset,stream) 
-	| Bad exn   -> error_parse asset exn 
-  in
-
-  let streams = BatList.filter_map parse_html assets in 
-  let strings, streams = Asset.extract_strings streams in 
-
-  let html = strings.SyntaxAsset.html in
 
   let revname_of_path path = 
     let path = BatString.head path (String.length path - String.length ".htm") in
@@ -75,14 +60,29 @@ let parsed_assets = lazy begin
     in
     extract segs
   in
+  
+  (* Extracting HTML *)
 
-  let streams = List.map (fun (asset,stream) -> revname_of_path asset, stream) streams in
+  let parse_html (kind,asset) = 
+    match kind with `Coffee | `Less | `AdLib -> None | `View ->
+      let revpath = revname_of_path asset in 
+      let result = readfile_lexbuf asset (Asset.parse revpath) in
+      match result with 
+	| Ok asset  -> Some asset
+	| Bad exn   -> error_parse asset exn 
+  in
+
+  let streams = BatList.filter_map parse_html assets in 
+  let strings, streams = Asset.extract_strings streams in 
+
+  let htmls = strings.SyntaxAsset.htmls in
+
   let templates = Asset.extract_assets streams in 
 
   let generated = 
     List.concat
-      (Asset.generate_source html
-       :: (List.map (fun (revpath,asset) -> Asset.generate_asset revpath asset) templates))
+      (Asset.generate_source htmls
+       :: (List.map Asset.generate_asset templates))
   in
 
   let generated = 
