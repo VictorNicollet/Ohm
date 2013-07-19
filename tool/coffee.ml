@@ -84,7 +84,7 @@ let extract_types coffee =
 
   let formats = 
     List.concat 
-      (List.map (snd |- BatList.filter_map (fun (_,_,_,t) -> fst t)) functions) 
+      (List.map (fun (_,l) -> BatList.filter_map (fun (_,_,_,t) -> fst t) l) functions) 
   in
 
   let formats_ml = String.concat "\n" formats in

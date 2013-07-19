@@ -49,7 +49,7 @@ let explore () =
 	  ) contents
 	in
 	
-	List.iter (Filename.concat path |- aux) valid
+	List.iter (fun file -> aux (Filename.concat path file)) valid
 	  
       | _ -> ()
 	

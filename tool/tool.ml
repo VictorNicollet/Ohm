@@ -179,7 +179,7 @@ end
 (* Actions -------------------------------------------------------------------------------- *)
 
 let locateAssets () = 
-  List.iter (snd |- print_endline) (Lazy.force assets) 
+  List.iter (fun (_,asset) -> print_endline asset) (Lazy.force assets) 
 
 let compileAssets () = 
   ignore (Lazy.force parsed_assets)
