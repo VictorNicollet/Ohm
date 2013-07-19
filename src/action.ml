@@ -20,7 +20,7 @@ let defined  = Hashtbl.create 100
 
 let dispatch_define (server,prefix,args) action = 
 
-  let key   = path_clean (lowercase prefix) in 
+  let key   = path_clean (BatString.lowercase prefix) in 
   let endpt = endpoint_of_controller (server,prefix,args) in
   
   let value protocol domain port suffix cgi =
@@ -32,7 +32,7 @@ let dispatch_define (server,prefix,args) action =
   Hashtbl.add defined key value	
 
 let dispatch_declare (server,prefix,args) = 
-  let cell = ref (Some (path_clean (lowercase prefix))) in
+  let cell = ref (Some (path_clean (BatString.lowercase prefix))) in
   declared := cell :: !declared ;
   cell
     
@@ -51,7 +51,7 @@ let declare server prefix args =
   let cell = dispatch_declare controller and endpoint = endpoint_of_controller controller in 
   endpoint, fun action -> 
     if !cell = None then 
-      Util.log "Action: FAIL : action %S defined twice" (path_clean (lowercase prefix)) ;
+      Util.log "Action: FAIL : action %S defined twice" (path_clean (BatString.lowercase prefix)) ;
     cell := None ;
     dispatch_define controller action 
     
@@ -64,7 +64,7 @@ let register_404 action =
   the404 := Some action 
 
 let find_strict protocol domain port prefix suffix cgi = 
-  let list = Hashtbl.find_all defined (lowercase (path_clean prefix)) in 
+  let list = Hashtbl.find_all defined (BatString.lowercase (path_clean prefix)) in 
   try Some (BatList.find_map (fun candidate -> candidate protocol domain port suffix cgi) list)
   with Not_found -> None
 

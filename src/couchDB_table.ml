@@ -57,7 +57,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
     let keep = function (x, None) -> None | (x, Some y) -> Some (x,y) in
     let args = BatList.filter_map keep [
       "limit",          Some (string_of_int limit) ;
-      "startkey",       BatOption.map (Id.str |- key) start ;
+      "startkey",       BatOption.map (fun x -> key (Id.str x)) start ;
     ] in
     
     let url = 
@@ -98,7 +98,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
     in
 
     let limit = count + 1 in
-    let list = BatStd.ok (query_all_docs start limit) in
+    let list = BatPervasives.ok (query_all_docs start limit) in
     let first, next = try BatList.split_at count list with _ -> list, [] in
     let next = match next with h :: _ -> Some h | [] -> None in
     let first = no_design_docs first in 
@@ -238,7 +238,7 @@ module Database = functor (Config:ImplTypes.CONFIG) -> struct
   type ('ctx,'a) update = elt option -> ('ctx,'a * [`put of elt | `keep | `delete]) Run.t
 
   let transact id update = 
-    Raw.transaction id (get |- Run.bind update)
+    Raw.transaction id (fun id -> Run.bind update (get id))
 
   let ensure id eval = 
     transact id (function 
@@ -340,7 +340,7 @@ struct
 	  | x, `put elt -> (x,`put (Type.to_json elt))
 	  | x, `keep    -> (x,`keep)
 	  | x, `delete  -> (x,`delete))
-	(update (BatOption.bind Type.of_json_safe json)) 
+	(update (BatOption.bind json Type.of_json_safe )) 
     in
 
     Database.transact (Id.to_id id) update
@@ -372,7 +372,7 @@ struct
 
   let replace id f = 
     Database.replace (Id.to_id id) begin fun json_opt -> 
-      let t_opt = BatOption.bind Type.of_json_safe json_opt in
+      let t_opt = BatOption.bind json_opt Type.of_json_safe in
       Type.to_json (f t_opt) 
     end
 

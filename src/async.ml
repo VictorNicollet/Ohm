@@ -133,7 +133,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
       return (log "Ohm.Async: reschedule %s" (Id.str id))
     )  in
 
-    let call = try BatPMap.find task.Task.name defined with Not_found -> 
+    let call = try BatMap.find task.Task.name defined with Not_found -> 
       log "Ohm.Async: task %S does not exist" task.Task.name ;
       ( fun json -> return () ) 
     in
@@ -157,8 +157,8 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
   class ['ctx] manager = object (self)
     constraint 'ctx = #ctx 
 
-    val mutable defined   = BatPMap.empty
-    val mutable undefined = BatPSet.empty 
+    val mutable defined   = BatMap.empty
+    val mutable undefined = BatSet.empty 
     val mutable periodic  = []
 
     method define : 'a. string -> 'a Fmt.fmt -> ('a -> ('ctx,unit) Run.t) -> ('ctx,'a) task = 
@@ -168,7 +168,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 	
     method declare : 'a. string -> 'a Fmt.fmt -> ('ctx,'a) task * (('a -> ('ctx,unit) Run.t) -> unit) = 
       fun name format -> 
-	undefined <- BatPSet.add name undefined ;
+	undefined <- BatSet.add name undefined ;
 	let task ?delay args = save_task delay name (format.Fmt.to_json args) in
 	let define body =
 	  let call json = 
@@ -176,10 +176,10 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 	      | None      -> return (log "Ohm.Async: could not parse arguments for %S" name)
 	      | Some args -> body args
 	  in
-	  if BatPMap.mem name defined then 
+	  if BatMap.mem name defined then 
 	    log "Ohm.Async: task %S defined twice" name ; 
-	  undefined <- BatPSet.remove name undefined ;
-	  defined   <- BatPMap.add name call defined 
+	  undefined <- BatSet.remove name undefined ;
+	  defined   <- BatMap.add name call defined 
 	in
 	task, define
       
@@ -197,8 +197,8 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
     method stats : ('ctx,'stats) Run.t = stats ()
 
     method run ?timeout new_ctx = 
-      if not (BatPSet.is_empty undefined) then begin
-	BatPSet.iter (log "Ohm.Async: task %S not defined") undefined ;
+      if not (BatSet.is_empty undefined) then begin
+	BatSet.iter (log "Ohm.Async: task %S not defined") undefined ;
 	failwith "Async tasks were not defined"
       end ;
 
@@ -208,7 +208,7 @@ module Make = functor(DB:CouchDB.CONFIG) -> struct
 	| (f,n,t) :: tail -> 
 	  let time = Unix.gettimeofday () in
 	  match !t with Some t when t > time -> process more tail | _ -> 
-	    t := f (new_ctx ()) ;
+	    t := BatOption.map (fun t -> t +. Unix.gettimeofday ()) (f (new_ctx ())) ;
 	    let next = if !t = None then (f,n-1,t) :: tail else tail in
 	    process more next 
       in

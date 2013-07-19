@@ -9,7 +9,7 @@ class type ['server,'args] request = object
   method self   : ('server,'args) Action_Endpoint.endpoint
   method server : 'server
   method path   : string
-  method post   : [ `JSON of Json.t | `POST of (string,string) BatPMap.t ] option
+  method post   : [ `JSON of Json.t | `POST of (string,string) BatMap.t ] option
   method get    : string -> string option 
   method args   : 'args
   method cookie : string -> string option          
@@ -28,7 +28,7 @@ class ['server,'args] nilreq (server:'server) (args:'args) = object
   method path = ""
   method get (_:string) = (None : string option)
   method cookie (_:string) = (None : string option) 
-  method post = (None : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option)
+  method post = (None : [ `JSON of Json_type.t | `POST of (string,string) BatMap.t ] option)
 
 end
  
@@ -37,7 +37,7 @@ class ['server,'args] fcgi_request
   (server:'server) (args:'args) (cgi:Netcgi.cgi) =  
 
   let env = cgi # environment in 
-  let post : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option Lazy.t =
+  let post : [ `JSON of Json_type.t | `POST of (string,string) BatMap.t ] option Lazy.t =
     lazy begin
       if cgi # request_method = `POST then
 	if BatString.starts_with (env # input_content_type_string) "application/json" 
@@ -54,10 +54,10 @@ class ['server,'args] fcgi_request
 		   (List.fold_left begin fun acc arg ->
 		     try 
 		       match utf8 (arg # name), utf8 (arg # value) with
-			 | Some name, Some value -> BatPMap.add name value acc
+			 | Some name, Some value -> BatMap.add name value acc
 			 | _ -> acc
 		     with _ -> acc
-		   end BatPMap.empty (cgi # arguments))) 
+		   end BatMap.empty (cgi # arguments))) 
       else
 	None
     end

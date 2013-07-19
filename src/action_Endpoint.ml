@@ -13,7 +13,7 @@ type ('server,'args) endpoint = 'server -> 'args -> string
 let url endpoint s a = endpoint s a 
 
 let endpoint_of_controller (server,prefix,parse) =
-  let prefix = path_clean (lowercase prefix) in
+  let prefix = path_clean (BatString.lowercase prefix) in
   fun s a ->  
     String.concat "/" 
       ( Server.server_root server s :: prefix :: 

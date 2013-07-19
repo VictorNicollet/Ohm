@@ -226,7 +226,7 @@ class type ['server,'args] request = object
   (** Extract the request data which has been provided either as a field-and-value standard [`POST]
       or as a single [`JSON] value. 
   *)
-  method post : [ `JSON of Json_type.t | `POST of (string,string) BatPMap.t ] option
+  method post : [ `JSON of Json_type.t | `POST of (string,string) BatMap.t ] option
   
   (** Extract additional [GET] parameters from the query string. 
   *)
