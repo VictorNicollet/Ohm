@@ -54,6 +54,8 @@ module Convenience = CouchDB_convenience
 
 (* Bind signals ---------------------------------------------------------------------------- *)
 
-let () = Sig.listen Sig.Std.Bot.tick (Util.every 3600.0 ImplDB.compact) 
+let week = 3600. *. 24. *. 7.
+
+let () = Sig.listen Sig.Std.Bot.tick (Util.every week  ImplDB.compact) 
 let () = Sig.listen Sig.Std.Put.once ImplViews.compile_views
 
